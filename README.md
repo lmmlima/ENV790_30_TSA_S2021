@@ -1,5 +1,5 @@
-# ENV790_30_TSA_S2021
+# ENVIRON790.30 Time Series Analysis for Energy Data
 
 
-Welmoce to Time Series Analysis for Energy Data, Spring 2021.
+Course repository for Time Series Analysis at Duke University, spring 2021
 
