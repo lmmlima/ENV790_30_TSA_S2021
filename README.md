@@ -1,2 +1,5 @@
 # ENV790_30_TSA_S2021
-Time Series Analysis
+
+
+Welmoce to Time Series Analysis for Energy Data, Spring 2021.
+
