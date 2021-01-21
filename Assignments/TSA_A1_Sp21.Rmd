@@ -1,0 +1,38 @@
+---
+title: "ENV 790.30 - Time Series Analysis for Energy Data | Spring 2021"
+subtitle: "Assignment 1 - Due date 01/27/21"
+author: "Student Name"
+output: pdf_document
+geometry: margin=2.54cm
+---
+
+## Directions
+
+You should open the .rmd file corresponding to this assignment on RStudio. The file is available on our class repository on Github. And to do so you will need to fork our repository and link it to your RStudio.  
+
+Once you have the project open the first thing you will do is change "Student Name" on line 3 with your name. 
+Then you will start working through the assignment by  **creating code and output** that answer each question. Be sure to use this assignment document. Your report should contain the answer to each question and any plots/tables you obtained (when applicable).
+
+When you have completed the assignment, **Knit** the text and code into a single PDF file. Rename the pdf file such that it includes your first and last name (e.g., "LuanaLima_TSA_A01_Sp21.Rmd"). Submit this pdf using Sakai. 
+
+## Questions
+
+Q1. What are your previous experiences with time series analysis, R, and Git? 
+
+> Answer: 
+
+
+Q2. Provide a link below to your forked course repository in GitHub. Make sure you have pulled all recent changes from the course repository and that you have updated your course README file as instructed on the recorded video "Getting started with Git and Github". 
+
+> Answer: 
+
+
+Q3. For this part we just want to see the path to your R project. No need to do anything. The output will be automatically generated once you knit you file. 
+
+> Answer: This is my working directory:
+
+```{r}
+getwd()
+````
+
+
