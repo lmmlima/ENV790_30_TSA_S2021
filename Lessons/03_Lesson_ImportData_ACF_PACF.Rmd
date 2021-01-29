@@ -1,0 +1,138 @@
+---
+title: "Import Data - ACF - PACF"
+author: "Luana Lima"
+date: "1/28/2021"
+output: pdf_document
+---
+
+## Setting R code chunk options
+
+The first R code chunk is named **setup**. Here we are setting the options for R code chunks. The choice echo=TRUE means both code and output will appear on report. If for a specific chunk you want different options, you can always change that on the first line as we did in the following chunk. We chose include=FALSE which means that nothing related to this chunk (code and output) will appear on the knitted file.
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(echo = TRUE) 
+```
+
+## Loading packages and initializing
+
+It's useful to designate one code chunk to load packages on the beginning of the file. You can always add to this chunk as needed. But concentrate the packages needed on only one chunk.
+
+```{r package, include=FALSE}
+library(lubridate)
+library(ggplot2)
+
+```
+
+## Importing data
+
+For this first example we will import water inflow data for reservoirs in Brazil. We have data for 15 different reservoirs spread all over the country. To import a .txt, .csv or .xlsx file you can use the function *read.table()*. This function will store the data as a data frame and has useful inputs such as
+
+* *file = * : use this input to point to yoru data file. If it's on the same folder as your .Rmd then you only need to write the file name. But if it's on another folder you need to point to the path were file is located;
+* *header =* : if your file has a header you should set this to TRUE, o.w. FALSE;
+* *skip =* : if your file has rows explaining the data or any other rows on the top that need to be skipped you should just set skip to be equal to the number of row that should be skipped before reading the data. Mote that if header=TRUE, you should not skip the row with the header. The defaul is *skip=0*;
+* *dec =* : define *dec="."* or *dec=","* depending on how it's defined on your set. The default is ".".
+
+```{r}
+#Importing time series data from text file
+#I am calling it raw for now because it's data as it is in the file
+raw_inflow_data <- read.table(file="/Users/lmm89/Desktop/ENV790_30_TSA_S2021/Data/inflowtimeseries.txt",header=FALSE,skip=0)
+
+#If you want specific columns just trim the table
+raw_inflow_data <- raw_inflow_data[,1:5] #the space before the comma means you want all rows
+                                 #and 1:5 means all columns from 1 to 5
+nhydro <- ncol(raw_inflow_data)-2
+nobs <- nrow(raw_inflow_data) 
+
+#If your file does not have header like this one you can add column names after creating the data frame
+colnames(raw_inflow_data)=c("Month","Year", "HP1", "HP2","HP3")
+
+#Checking data
+head(raw_inflow_data)
+str(raw_inflow_data)
+```
+## Date or time period
+
+The data sets we will work with will be index by time, remember we are doing TIME series analysis. After importing your data set make sure that you have your dates right. For this specific inflow file our date is spread in two different columns. The first one is the month and the second the year. The best package to handle date conversion in R is lubridate. Let's see how we can use lubridate functions to combine those two columns into one date object. Note that this is only one example for our particular data set, for more info on lubridate function refer to tho this file [file](https://evoldyn.gitlab.io/evomics-2018/ref-sheets/R_lubridate.pdf) also available on our Sakai lessons page for M3.
+
+```{r}
+#using package lubridate
+my_date <- paste(raw_inflow_data[,1],raw_inflow_data[,2],sep="-")
+my_date <- my(my_date)  #function my from package lubridate
+head(my_date)
+#add that to inflow_data 
+inflow_data <- cbind(my_date,raw_inflow_data[,3:5])
+head(inflow_data)
+
+```
+
+## Initial plots
+
+A plot of observed values over time is the first you do to start understanding the data set. The default packages on R offer the function *plot()*. 
+
+```{r}
+#Graph 1: Plot the series for HP1
+plot(inflow_data[,"HP1"]) # note that this do not generate a nice plot
+
+plot(inflow_data[,"HP1"],type="l") #The type "l" tells you want a line plot check help(plot) 
+                                  #for other types of plots
+
+plot(inflow_data[,"HP1"],type="l",col="blue") #Change the color of the series
+plot(inflow_data[,"HP1"],type="l",col="blue",ylab="Inflow [m3/s]") 
+plot(inflow_data[,"HP1"],type="l",col="blue",ylab="Inflow [m3/s]",main="Historical Inflow Data for HP1") 
+
+#Additional - Suppose you want to add a line with the mean
+abline(h=mean(inflow_data[,"HP1"]),col="red")
+```
+
+Suppose you want to plot HP1 and HP2 on the same graph.
+
+```{r}
+plot(inflow_data[,"HP1"],type="l",col="blue",ylab="Inflow [m3/s]") 
+lines(inflow_data[,"HP2"],col="red") #Note if you use plot you generate a new graph 
+                    #no need to specify type in lines() function
+title(main="Infow Series for HP1 and HP2")
+
+#If you want to add legend
+legend("topright",legend=c("HP1","HP2"), lty=c("solid","solid"),col=c("blue","red"))
+```
+
+There are other useful plots available for data visualization like histograms and scatter plots. Here are a couple examples.
+
+```{r}
+#Graph 3: Simple Histogram
+hist(inflow_data[,"HP1"])
+hist(inflow_data[,"HP1"],breaks=30,col="gray")  #increase number of bars with breaks input
+
+#Graph 4: Scatter Plot of HP1 and HP2
+plot(inflow_data[,"HP1"],inflow_data[,"HP2"])
+```
+
+
+## Improving plots with time period information
+
+We could improve the plots generated in the previous sections using another package *ggplot2*. Package ggplot2 offers better looking plots, additional fucntionalities, easy incorporation of the date labels, legends, etc.  Let's see how we would reproduce the plots from the previous section with ggplot2.
+
+```{r}
+#using package ggplot2
+ggplot(inflow_data, aes(x=my_date, y=HP1)) +
+            geom_line(color="blue")
+
+#adding two time series to the same plot
+ggplot(inflow_data, aes(x=my_date, y=Inflow)) +
+            geom_line(aes(y=HP1,col="HP1")) +
+            geom_line(aes(y=HP2,col="HP2")) +
+            xlab("Time") +
+            labs(color="Reservoir")
+```
+## Transforming data into time series object
+
+Many of the functions we will use require a time series object. You can transform your data in a time series using the function *ts()*. Only the columns with reservoir inflow data should be transformed, not the ones with month and year. Your ts object is not a data frame, but like I said we will need it as a ts for some function we will explore in future scripts.
+
+```{r}
+ts_inflow_data <- ts(inflow_data[,2:(2+nhydro-1)]) #note that we are only transforming columns with inflow data, not the date columns
+ts_inflow_data
+```
+
+Note that ts_inflow_data has information on start, end and frequency. We will discuss frequency in future lectures, for now let's just keep the default value for frequency which is 1.
+
+
