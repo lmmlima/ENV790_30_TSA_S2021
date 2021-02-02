@@ -1,6 +1,6 @@
 ---
 title: "ENV 790.30 - Time Series Analysis for Energy Data | Spring 2021"
-subtitle: "Assignment 2 - Due date 01/27/21"
+subtitle: "Assignment 2 - Due date 02/05/21"
 author: "Student Name"
 output: pdf_document
 geometry: margin=2.54cm
