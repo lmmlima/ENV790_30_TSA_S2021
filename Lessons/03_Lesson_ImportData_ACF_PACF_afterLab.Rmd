@@ -18,8 +18,12 @@ knitr::opts_chunk$set(echo = TRUE)
 It's useful to designate one code chunk to load packages on the beginning of the file. You can always add to this chunk as needed. But concentrate the packages needed on only one chunk.
 
 ```{r package, include=FALSE}
+#install.packages("lubridate")
 library(lubridate)
 library(ggplot2)
+
+#install.packages("forecast")
+library(forecast)
 
 ```
 
@@ -37,10 +41,13 @@ For this first example we will import water inflow data for reservoirs in Brazil
 #I am calling it raw for now because it's data as it is in the file
 raw_inflow_data <- read.table(file="/Users/lmm89/Desktop/ENV790_30_TSA_S2021/Data/inflowtimeseries.txt",header=FALSE,skip=0)
 
+#Show alternative way of doing it with relative path
+#raw_inflow_data <- read.table(file="../Data/inflowtimeseries.txt",header=FALSE,skip=0)
+
 #If you want specific columns just trim the table
 raw_inflow_data <- raw_inflow_data[,1:5] #the space before the comma means you want all rows
                                  #and 1:5 means all columns from 1 to 5
-nhydro <- ncol(raw_inflow_data)-2
+nhydro <- ncol(raw_inflow_data)-2 #remove date info
 nobs <- nrow(raw_inflow_data) 
 
 #If your file does not have header like this one you can add column names after creating the data frame
@@ -50,6 +57,7 @@ colnames(raw_inflow_data)=c("Month","Year", "HP1", "HP2","HP3")
 head(raw_inflow_data)
 str(raw_inflow_data)
 ```
+
 ## Date or time period
 
 The data sets we will work with will be index by time, remember we are doing TIME series analysis. After importing your data set make sure that you have your dates right. For this specific inflow file our date is spread in two different columns. The first one is the month and the second the year. The best package to handle date conversion in R is lubridate. Let's see how we can use lubridate functions to combine those two columns into one date object. Note that this is only one example for our particular data set, for more info on lubridate function refer to tho this file [file](https://evoldyn.gitlab.io/evomics-2018/ref-sheets/R_lubridate.pdf) also available on our Sakai lessons page for M3.
@@ -65,7 +73,7 @@ head(inflow_data)
 
 ```
 
-## Initial plots
+## Initial plots with plot() function
 
 A plot of observed values over time is the first you do to start understanding the data set. The default packages on R offer the function *plot()*. 
 
@@ -108,7 +116,7 @@ plot(inflow_data[,"HP1"],inflow_data[,"HP2"])
 ```
 
 
-## Improving plots with time period information
+## Improving plots with time period information and ggplot
 
 We could improve the plots generated in the previous sections using another package *ggplot2*. Package ggplot2 offers better looking plots, additional fucntionalities, easy incorporation of the date labels, legends, etc.  Let's see how we would reproduce the plots from the previous section with ggplot2.
 
@@ -134,4 +142,22 @@ ts_inflow_data
 ```
 
 Note that ts_inflow_data has information on start, end and frequency. We will discuss frequency in future lectures, for now let's just keep the default value for frequency which is 1.
+
+### Plotting ACF and PACF
+
+There are multiple ways to get acf and pacf plots in R. The default package "stats" have the functions acf() and pacf(). Another option is with the functions Acf() and Pacf() from package "forecast". Package forecast is not a default package. So you need to install and load it on the beginning of your scripts. 
+
+```{r acf}
+# The function acf() and pacf() is from package "stats"
+HP1_acf=acf(ts_inflow_data[,1],lag.max=60, type="correlation", plot=TRUE)
+
+HP1_pacf=pacf(ts_inflow_data[,1],lag.max=60, plot=TRUE)
+
+#Computing ACF and PACF with package forecast (better plots)
+
+#The next line will output a plot since we have plot=TRUE and also store the acf values in the object
+HP1_acf=Acf(ts_inflow_data[,1],lag.max=60, type="correlation", plot=TRUE)
+
+HP1_pacf=Pacf(ts_inflow_data[,1],lag.max=60, plot=TRUE)
+```
 
