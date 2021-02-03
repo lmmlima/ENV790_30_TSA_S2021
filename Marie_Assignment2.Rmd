@@ -15,45 +15,48 @@ Then you will start working through the assignment by  **creating code and outpu
 
 When you have completed the assignment, **Knit** the text and code into a single PDF file. Rename the pdf file such that it includes your first and last name (e.g., "LuanaLima_TSA_A02_Sp21.Rmd"). Submit this pdf using Sakai. 
 
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+#Print out all of the code and the out put of code
+```
+
 ## R packages
 
 R packages needed for this assignment:"forecast","tseries", and "dplyr". Install these packages, if you haven't done yet. Do not forget to load them before running your script, since they are NOT default packages.\\
 install 
 
 ```{r}
-#Load/install required package here
 install.packages("tseries")
 install.packages("dplyr")
 install.packages("forecast")
 install.packages("lubridata")
+install.packages("ggplot2")
 
 library(xlsx)
 library(tseries)
 library(dplyr)
 library(forescast)
 library(readxl)
+library(lubridate)
+library(ggplot2)
 ```
 
 ## Data set information  
 
 Consider the data provided in the spreadsheet "Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx" on our **Data** folder. The data comes from the US Energy Information and Administration and corresponds to the January 2021 Monthly Energy Review. The spreadsheet is ready to be used. Use the command $read.table()$ to import the data in R or $panda.read\_excel()$ in Python (note that you will need to import pandas package). }
 
-```{r}
-#Importing data set
-
-Table_new <- read_excel("Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx",skip = 9)
-```
 
 ## Question 1
 You will work only with the following columns: Total Biomass Energy Production, Total Renewable Energy Production, Hydroelectric Power Consumption. Create a data frame structure with these three time series only. Use the command head() to verify your data.
 
 ```{r}
 
-Table_new <- read_excel("Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx",skip = 9)
+Table_new <- read_excel("Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx"),skip = 9)
 Energy <- Table_new[,c(1,4,5,6)]
 head(Energy)
-```
 
+energy <- na.omit(Energy)
+```
 
 
 ## Question 2
@@ -85,7 +88,7 @@ sd(ts_energy[,"Hydroelectric Power Consumption"])
 Display and interpret the time series plot for each of these variables. Try to make your plot as informative as possible by writing titles, labels, etc. For each plot add a horizontal line at the mean of each series in a different color.
 
 ```{r}
-plot(energy$Month,energy$`Total Biomass Energy Production`,type="l",col="blue",ylab="Energy-Trillion BTU", xlab="Time",main= "Total Biomass Energy Production")
+plot(ts_energy[,"Total Biomass Energy Production"],type="l",col="green",ylab="Energy-Trillion BTU", xlab="Time",main= "Total Renewable Energy Production")
 abline(h=mean(ts_energy[,"Total Biomass Energy Production"]), col="red")
 
 plot(ts_energy[,"Total Renewable Energy Production"],type="l",col="green",ylab="Energy-Trillion BTU", xlab="Time",main= "Total Renewable Energy Production")
@@ -101,16 +104,31 @@ abline(h=mean(ts_energy[,"Hydroelectric Power Consumption"]), col="red")
 ## Question 5
 Compute the correlation between these three series. Are they significantly correlated? Explain your answer.
 
+correlation 
+significantly correlationg -- greater than 0.7 
 ```{r}
-
+ts_energy_acf=acf(ts_energy[,1],lag.max=2, type="correlation", plot = TRUE)
 ```
 
 ## Question 6 
 Compute the autocorrelation function from lag 1 up to lag 40 for these three variables. What can you say about these plots? Do the three of them have the same behavior?
 
+Unsure if I am looking at all three graphs behavior 
+
+why 1 
 ```{r}
+ts_energy_acf_1=acf(ts_energy[,1],lag.max=40, type="correlation", plot = TRUE)
+
 
 ```
 
 ## Question 7
-Compute the partial autocorrelation function from lag 1 to lag 40 for these three vari
+Compute the partial autocorrelation function from lag 1 to lag 40 for these three variables. How these plots differ from the ones in Q6?
+
+
+```{r}
+
+ts_pacf=pacf(ts_energy[,1],lag.max=40, plot = TRUE)
+
+```
+
