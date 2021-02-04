@@ -26,19 +26,19 @@ R packages needed for this assignment:"forecast","tseries", and "dplyr". Install
 install 
 
 ```{r}
-install.packages("tseries")
-install.packages("dplyr")
-install.packages("forecast")
-install.packages("lubridata")
-install.packages("ggplot2")
+#install.packages("tseries")
+#install.packages("dplyr")
+#install.packages("forecast")
+#install.packages("lubridate")
+#install.packages("ggplot2")
+#intstall.packages("stats")
+#library("xlsx")
 
-library(xlsx)
 library(tseries)
 library(dplyr)
-library(forescast)
+library(forecast)
 library(readxl)
 library(lubridate)
-library(ggplot2)
 ```
 
 ## Data set information  
@@ -51,11 +51,11 @@ You will work only with the following columns: Total Biomass Energy Production, 
 
 ```{r}
 
-Table_new <- read_excel("Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx"),skip = 9)
-Energy <- Table_new[,c(1,4,5,6)]
-head(Energy)
+Table_new <- read.csv("./Data/table102.csv", header=TRUE)
+energy <- Table_new[,c(1,4,5,6)]
+head(energy)
 
-energy <- na.omit(Energy)
+
 ```
 
 
@@ -73,14 +73,14 @@ ts_energy <- ts(energy[,2:4])
 Compute mean and standard deviation for these three series.
 
 ```{r}
-mean(ts_energy[,"Total Biomass Energy Production"])
-sd(ts_energy[,"Total Biomass Energy Production"])
+mean(ts_energy[,"Total.Biomass.Energy.Production"])
+sd(ts_energy[,"Total.Biomass.Energy.Production"])
 
-mean(ts_energy[,"Total Renewable Energy Production"])
-sd(ts_energy[,"Total Renewable Energy Production"])
+mean(ts_energy[,"Total.Renewable.Energy.Production"])
+sd(ts_energy[,"Total.Renewable.Energy.Production"])
 
-mean(ts_energy[,"Hydroelectric Power Consumption"])
-sd(ts_energy[,"Hydroelectric Power Consumption"])
+mean(ts_energy[,"Hydroelectric.Power.Consumption"])
+sd(ts_energy[,"Hydroelectric.Power.Consumption"])
 ```
 
 
@@ -88,14 +88,14 @@ sd(ts_energy[,"Hydroelectric Power Consumption"])
 Display and interpret the time series plot for each of these variables. Try to make your plot as informative as possible by writing titles, labels, etc. For each plot add a horizontal line at the mean of each series in a different color.
 
 ```{r}
-plot(ts_energy[,"Total Biomass Energy Production"],type="l",col="green",ylab="Energy-Trillion BTU", xlab="Time",main= "Total Renewable Energy Production")
-abline(h=mean(ts_energy[,"Total Biomass Energy Production"]), col="red")
+plot(ts_energy[,"Total.Biomass.Energy.Production"],type="l",col="green",ylab="Energy-Trillion BTU", xlab="Time",main= "Total Biomass Energy Production")
+abline(h=mean(ts_energy[,"Total.Biomass.Energy.Production"]), col="red")
 
-plot(ts_energy[,"Total Renewable Energy Production"],type="l",col="green",ylab="Energy-Trillion BTU", xlab="Time",main= "Total Renewable Energy Production")
-abline(h=mean(ts_energy[,"Total Renewable Energy Production"]), col="red")
+plot(ts_energy[,"Total.Renewable.Energy.Production"],type="l",col="green",ylab="Energy-Trillion BTU", xlab="Time",main= "Total Renewable Energy Production")
+abline(h=mean(ts_energy[,"Total.Renewable.Energy.Production"]), col="red")
 
-plot(ts_energy[,"Hydroelectric Power Consumption"],type="l",col="green",ylab="Energy-Trillion BTU", xlab="Time",main= "Hydroelectric Power Consumption")
-abline(h=mean(ts_energy[,"Hydroelectric Power Consumption"]), col="red")
+plot(ts_energy[,"Hydroelectric.Power.Consumption"],type="l",col="green",ylab="Energy-Trillion BTU", xlab="Time",main= "Hydroelectric Power Consumption")
+abline(h=mean(ts_energy[,"Hydroelectric.Power.Consumption"]), col="red")
 
 
 ```
@@ -104,31 +104,43 @@ abline(h=mean(ts_energy[,"Hydroelectric Power Consumption"]), col="red")
 ## Question 5
 Compute the correlation between these three series. Are they significantly correlated? Explain your answer.
 
-correlation 
-significantly correlationg -- greater than 0.7 
+Below is a graph of all three variables. Based on the graph it is clear that biomass and renewable energy production follow similar tends. They general experience growth and stagnation at the same type. Hydro power production is pretty consistent through time. Based on the calculated correlation coefficients the correlation between biomass and renewable energy is greater than 0.7 and is a significant correlation. The correlation between renewable and hydro power production and biomass energy production are also both less than 0.7 and are not significant. 
 ```{r}
-ts_energy_acf=acf(ts_energy[,1],lag.max=2, type="correlation", plot = TRUE)
+plot(ts_energy[,"Total.Biomass.Energy.Production"],type="l",col="red",ylab="Energy-Trillion BTU", xlab="Time",main= "Energy Production", ylim=c(0,1000), xlim=c(0,600)) 
+lines(ts_energy[,"Total.Renewable.Energy.Production"], col =  "green")
+lines(ts_energy[,"Hydroelectric.Power.Consumption"], col =  "blue")
+
+
+Bio <- ts_energy[,c(1)]
+renew <- ts_energy[,c(2)]
+hydro <- ts_energy[,c(3)]
+cor(Bio,renew)
+cor(renew,hydro)
+cor(hydro,Bio)
+
 ```
 
 ## Question 6 
 Compute the autocorrelation function from lag 1 up to lag 40 for these three variables. What can you say about these plots? Do the three of them have the same behavior?
 
-Unsure if I am looking at all three graphs behavior 
 
-why 1 
+Hydropower has clear seasonal variation with the fluctuations in lags rising and falling. This plot is rather different from the renewable energy ACF and biomass energy ACF. There is a strong correlation with initial lags on the renewable energy plot. This is similar to biomass energy ACF plot, again there is a strong correlation between initial lags in from biomass energy. The correlation then gets weaker as the lags progress. 
+
 ```{r}
-ts_energy_acf_1=acf(ts_energy[,1],lag.max=40, type="correlation", plot = TRUE)
-
+ts_energy_acf_1=acf(ts_energy[,1],lag.max=40, type="correlation", plot = TRUE, main="Biomass Energy")
+ts_energy_acf_2=acf(ts_energy[,2],lag.max=40, type="correlation", plot = TRUE, main="Renewable Energy")
+ts_energy_acf_3=acf(ts_energy[,3],lag.max=40, type="correlation", plot = TRUE, main="Hydropower Energy")
 
 ```
 
 ## Question 7
 Compute the partial autocorrelation function from lag 1 to lag 40 for these three variables. How these plots differ from the ones in Q6?
 
-
+The correlation between lags dramatically falls for the PACF chart once the intermediate variables are removed for  all three charts from the ACF charts. The PACF charts for the renewable Energy and biomass energy production correlation between lags is dramatically less significant than the results obtained from the ACF charts.  There are some interesting correlations produced in the PACF charts, the correlation coefficients in the biomass and renewable energy PACF charts are positive but there are a few negative correlations. For Hydro-power production the seasonal variations seen in the ACF chart do not occur consistently in the PACF chart and the correlations are less profound. For hydro-power the lag correlations from 0-14 are more significant than the lags from 14 onward.  
 ```{r}
 
-ts_pacf=pacf(ts_energy[,1],lag.max=40, plot = TRUE)
-
+ts_pacf_1=pacf(ts_energy[,1],lag.max=40, plot = TRUE,main="Biomass Energy")
+ts_pacf_2=pacf(ts_energy[,2],lag.max=40, plot = TRUE,main="Renewable Energy")
+ts_pacf_2=pacf(ts_energy[,3],lag.max=40, plot = TRUE,main="Hydropower Production")
 ```
 
