@@ -10,7 +10,7 @@ output: pdf_document
 First R code chunk is used for setting the options for all R code chunks. The choice echo=TRUE means both code and output will appear on report, include = FALSE neither code nor output is printed.
 
 ```{r setup, include=FALSE} 
-knitr::opts_chunk$set(echo = TRUE) 
+knitr::opts_chunk$set(echo = TRUE,tidy.opts=list(width.cutoff=80), tidy=FALSE) 
 ```
 
 ## Loading packages and initializing
@@ -39,8 +39,11 @@ raw_inflow_data <- read.table(file="../Data/inflowtimeseries.txt",header=FALSE,s
 nhydro <- ncol(raw_inflow_data)-2
 nobs <- nrow(raw_inflow_data) 
 
-#If your file does not have header like this one you can add column names after creating the data frame
-colnames(raw_inflow_data)=c("Month","Year", "HP1", "HP2","HP3","HP4", "HP5","HP6","HP7", "HP8","HP9","HP10", "HP11","HP12","HP13", "HP14","HP15")
+#If your file does not have header like this one you can add column names after 
+#creating the data frame
+colnames(raw_inflow_data)=c("Month","Year", "HP1", "HP2","HP3","HP4", "HP5",
+                            "HP6","HP7", "HP8","HP9","HP10", "HP11","HP12", 
+                            "HP13", "HP14","HP15")
 
 #Checking data
 head(raw_inflow_data)
@@ -105,7 +108,8 @@ Fixed!
 Many of the functions we will use require a time series object. You can transform your data in a time series using the function *ts()*. 
 
 ```{r}
-ts_inflow_data <- ts(inflow_data[,2:(2+nhydro-1)],frequency=12) #note that we are only transforming columns with inflow data, not the date columns  #start=my_date[1],end=my_date[nobs],
+ts_inflow_data <- ts(inflow_data[,2:(2+nhydro-1)],frequency=12) 
+#note that we are only transforming columns with inflow data, not the date columns  #start=my_date[1],end=my_date[nobs],
 head(ts_inflow_data,15)
 ```
 
@@ -119,7 +123,8 @@ Let's use functions Acf() and Pacf() from package "forecast".
 #Acf and Pacf for HP1
 for(i in 1:nhydro){
   par(mfrow=c(1,2))  #place plot side by side
-  Acf(ts_inflow_data[,i],lag.max=40,main=paste("Inflows HP",i,sep="")) # because I am not storing Acf() into any object, I don't need to specify plot=TRUE 
+  Acf(ts_inflow_data[,i],lag.max=40,main=paste("Inflows HP",i,sep="")) 
+  # because I am not storing Acf() into any object, I don't need to specify plot=TRUE 
   Pacf(ts_inflow_data[,i],lag.max=40,main=paste("Inflows HP",i,sep=""))
 }
 
@@ -181,7 +186,9 @@ iHP=1
 
 #Use seasonal means model
 #First create the seasonal dummies
-dummies <- seasonaldummy(ts_inflow_data[,iHP])  #this function only accepts ts object, no need to add one here because date object is not a column
+dummies <- seasonaldummy(ts_inflow_data[,iHP])  
+#this function only accepts ts object, no need to add one here because date 
+#object is not a column
 
 #Then fit a linear model to the seasonal dummies
 seas_means_model=lm(inflow_data[,(iHP+1)]~dummies)
