@@ -27,9 +27,13 @@ Consider the same data you used for A2 from the spreadsheet "Table_10.1_Renewabl
 
 R packages needed for this assignment:"forecast","tseries", and "Kendall". Install these packages, if you haven't done yet. Do not forget to load them before running your script, since they are NOT default packages.\\
 
-```{r}
+```{r package, message=FALSE}
 #Load/install required package here
-
+library(lubridate)
+library(ggplot2)
+library(forecast)
+library(Kendall)
+library(tseries)
 ```
 
 ##Trend Component
@@ -37,17 +41,99 @@ R packages needed for this assignment:"forecast","tseries", and "Kendall". Insta
 ### Q1
 Create a plot window that has one row and three columns. And then for each object on your data frame, fill the plot window with time series plot, ACF and PACF. You may use the some code form A2, but I want all three plots on the same window this time. (Hint: watch videos for M4)
 
+```{r}
+Table_new1 <- read.csv("../Data/table102.csv", header=TRUE)
+energy <- Table_new1[,c(1,4,5,6)]
+
+colnames(energy)=c("Month","Biomass_Energy", "Renewable_Energy", "Hydro_Power")
+
+my_date <- paste(energy[,1])
+my_date <- ym(my_date) 
+
+new_energy <- cbind(my_date,energy[,2:4])
+ts_energy <- ts(new_energy[,2:4],frequency=12) 
+
+nenergy <- ncol(new_energy)-1
+nobs <- nrow(new_energy)
+
+for(i in 1:nenergy){
+  par(mfrow=c(1,2))  
+  Acf(ts_energy[,i],lag.max=40,main=paste("Trillion_BTU_ ",colnames(new_energy)[(1+i)],sep="")) 
+  Pacf(ts_energy[,i],lag.max=40,main=paste("Trillion_BTU_",colnames(new_energy)[(1+i)],sep=""))
+}
+
+
+for(i in 1:nenergy){
+print(ggplot(data=new_energy, aes(x=my_date, y=new_energy[,(1+i)])) + geom_line(color="green")+
+            ylab(paste0("Trillion_BTU_",colnames(new_energy)[(1+i)],sep=""))
+)
+}
+```
+
 ### Q2
 From the plot in Q1, do the series Total Biomass Energy Production, Total Renewable Energy Production, Hydroelectric Power Consumption appear to have a trend? If yes, what kind of trend?
 
+Biomass and renewable energy production have a decreasing trend component. This can be seen by the decreasing mean over time, and have a high correlation component between lags.
+
+Hydro energy has seasonal trend component. The ACF graph depicts both negative and positive correlations coefficients which is one sign of a seasonal trend. Additionally, there still appears to be seasonal behavior in the PACF with the rise and fall in correlation. 
+
 ### Q3
 Use the *lm()* function to fit a linear trend to the three time series. Ask R to print the summary of the regression. Interpret the regression output, i.e., slope and intercept. Save the regression coefficients for further analysis.
+
+```{r}
+t <- c(1:nobs)
+
+linear_trend_model=lm(new_energy[,i+1]~t)  
+summary(linear_trend_model)
+beta0=as.numeric(linear_trend_model$coefficients[1]) 
+beta1=as.numeric(linear_trend_model$coefficients[2])
+
+for(i in 1:nenergy){
+print(ggplot(data=new_energy, aes(x=my_date, y=new_energy[,(1+i)])) + geom_line(color="green")+
+            ylab(paste0("Trillion_BTU_",colnames(new_energy)[(1+i)],sep="")) + geom_smooth(color="red",method="lm")
+)
+}
+
+
+```
+
  
 ### Q4
 Use the regression coefficients from Q3 to detrend the series. Plot the detrended series and  compare with the plots from Q1. What happened? Did anything change?
 
+```{r}
+detrend_new_energy <- new_energy[,(i+1)]-(beta0+beta1*t)
+
+for(i in 1:nenergy){
+print(ggplot(data=new_energy, aes(x=my_date, y=new_energy[,(1+i)])) + geom_line(color="green")+
+            ylab(paste0("Trillion_BTU_",colnames(new_energy)[(1+i)],sep="")) + geom_smooth(color="red",method="lm")+  geom_line(aes(y=detrend_new_energy), col="blue")+geom_smooth(aes(y=detrend_new_energy),color="orange",method="lm") 
+)
+}
+
+```
+
+
 ### Q5
 Plot ACF and PACF for the detrended series and compare with the plots from Q1. Did the plots change? How?
+
+
+```{r}
+
+dt<-data.frame(matrix(nrow=nrow(data2),ncol=ncol(data2))) then  inside the loop, you could do dt[,a]<- (your detrend formua) 
+
+
+trend_energy <- ncol(detrend_new_energy)-1
+
+
+for(i in 1:de_energy){
+  par(mfrow=c(1,2))  
+  Acf(detrend_new_energy[,i],lag.max=40,main=paste("Trillion_BTU_ ",colnames(detrend_new_energy)[(1+i)],sep="")) 
+  Pacf(detrend_new_energy[,i],lag.max=40,main=paste("Trillion_BTU_",colnames(detrend_new_energy)[(1+i)],sep=""))
+}
+
+
+```
+
 
 ## Seasonal Component
 
@@ -56,10 +142,68 @@ Set aside the detrended series and consider the original series again from Q1 to
 ### Q6
 Do the series seem to have a seasonal trend? Which serie/series? Use function *lm()* to fit a seasonal means model to this/these time series. Ask R to print the summary of the regression. Interpret the regression output. Save the regression coefficients for further analysis.
 
+Yes Hydro Power
+```{r}
+
+dummies_renew <- seasonaldummy(ts_energy[,2]) 
+seas_means_model=lm(new_energy[,2]~dummies_renew)
+summary(seas_means_model)
+
+dummies_hydro <- seasonaldummy(ts_energy[,3]) 
+seas_means_model=lm(new_energy[,3]~dummies_hydro)
+summary(seas_means_model)
+
+for(i in 1:nenergy){
+  dummies <- seasonaldummy(ts_energy[,i]) 
+seas_means_model=lm(new_energy[,(i+1)]~dummies)
+summary(seas_means_model)
+}
+
+
+```
+
+
 ### Q7
 Use the regression coefficients from Q6 to deseason the series. Plot the deseason series and compare with the plots from part Q1. Did anything change?
+```{r}
+
+nenergy <- ncol(new_energy)-1
+nobs <- nrow(new_energy)
+
+beta_int=seas_means_model$coefficients[1]
+beta_coeff=seas_means_model$coefficients[2:12]
+
+new_energy_comp=array(0,nobs)
+for(i in 1:nobs){
+ new_energy_comp[i]=(beta_int+beta_coeff%*%dummies[i,])
+}
+
+deseason_new_energy <- new_energy[,2:4]-new_energy_comp
+
+ggplot(deseason_new_energy, aes(x=my_date, y=Hydro_Power)) +
+            geom_line(color="blue") +
+            ylab("Trillion_BTU_Hydro") +
+            geom_line(aes(y=deseason_new_energy), col="green")
+
+ 
+```
+
 
 ### Q8
 Plot ACF and PACF for the deseason series and compare with the plots from Q1. Did the plots change? How?
+
+```{r}
+
+
+de_energy <- ncol(deseason_new_energy)-1
+
+
+for(i in 1:de_energy){
+  par(mfrow=c(1,2))  
+  Acf(deseason_new_energy[,i],lag.max=40,main=paste("Trillion_BTU_ ",colnames(deseason_new_energy)[(1+i)],sep="")) 
+  Pacf(deseason_new_energy[,i],lag.max=40,main=paste("Trillion_BTU_",colnames(deseason_new_energy)[(1+i)],sep=""))
+}
+
+```
 
 

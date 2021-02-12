@@ -141,7 +141,7 @@ t <- c(1:nobs)
 
 #Choose one hydro plant to study, as an exercise try to generalize this routine for all 15 HP
 #from the plot HP4 seems to have a trend so let's play with that column
-iHP=4  #change this to chekc other HP
+iHP=5  #change this to chekc other HP
 #prep_data <- data.frame("Inflow"=inflow_data[,iHP],"Time"=t)
 
 #Fit a linear trend to TS of iHP
