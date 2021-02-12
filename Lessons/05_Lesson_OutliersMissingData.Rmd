@@ -1,0 +1,278 @@
+---
+title: "M5: Outliers and Missing Data"
+author: "Luana Lima"
+date: "02/11/2021"
+output: pdf_document
+---
+
+## Setting R code chunk options
+
+First R code chunk is used for setting the options for all R code chunks. The choice echo=TRUE means both code and output will appear on report, include = FALSE neither code nor output is printed.
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(echo = TRUE,tidy.opts=list(width.cutoff=80), tidy=FALSE) 
+```
+
+## Loading packages and initializing
+
+Second R code chunk is for loading packages. By setting message = FALSE, the code will appear but not the output. 
+
+```{r package, message=FALSE}
+library(lubridate)
+library(ggplot2)
+library(forecast)
+library(Kendall)
+library(tseries)
+
+#New packages for M5
+#install.packages("outliers")
+library(outliers)
+#install.packages("tidyverse")
+library(tidyverse)
+
+```
+
+## Importing data
+
+Let's continue working with our inflow data for reservoirs in Brazil. 
+
+```{r}
+
+#Importing time series data from text file#
+raw_inflow_data <- read.table(file="../Data/inflowtimeseries.txt",header=FALSE,skip=0)
+
+#Trim the table to include only columns you need
+nhydro <- ncol(raw_inflow_data)-2
+nobs <- nrow(raw_inflow_data) 
+
+#If your file does not have header like this one you can add column names after 
+#creating the data frame
+colnames(raw_inflow_data)=c("Month","Year", "HP1", "HP2","HP3","HP4", "HP5",
+                            "HP6","HP7", "HP8","HP9","HP10", "HP11","HP12", 
+                            "HP13", "HP14","HP15")
+
+#Checking data
+head(raw_inflow_data)
+str(raw_inflow_data)
+```
+
+## Creating the date object
+
+Here we use the function my() from package lubridate.
+
+```{r}
+#using package lubridate
+my_date <- paste(raw_inflow_data[,1],raw_inflow_data[,2],sep="-")
+my_date <- my(my_date)  #function my from package lubridate
+head(my_date)
+#add that to inflow_data and store in a new data frame 
+inflow_data <- cbind(my_date,raw_inflow_data[,3:(3+nhydro-1)])
+head(inflow_data)
+
+```
+
+## Removing zeros in the end on data 
+
+```{r}
+#Remove last for rows by replacing current data frame
+inflow_data <- inflow_data[1:(nobs-4),]
+my_date <- my_date[1:(nobs-4)]
+
+#update object with number of observations
+nobs <- nobs-4
+
+#Tail again to check if the rows were correctly removed
+tail(inflow_data)
+```
+
+
+## Transforming data into time series object
+
+Many of the functions we will use require a time series object. You can transform your data in a time series using the function *ts()*. 
+
+```{r}
+ts_inflow_data <- ts(inflow_data[,2:(2+nhydro-1)],frequency=12) 
+#note that we are only transforming columns with inflow data, not the date columns  #start=my_date[1],end=my_date[nobs],
+head(ts_inflow_data,15)
+```
+
+## Initial plots for outlier detection
+
+Common plots for outlier detection are histograms and boxplots. Histograms will help you understand the shape and spread of the data and to identify any potential outliers. And boxplots will give more information on the spread of the data. 
+
+```{r}
+#using package ggplot2 to make histograms
+for(i in 1:nhydro){
+  print(ggplot(inflow_data, aes(inflow_data[,(1+i)])) +
+            geom_histogram() +
+            xlab(paste0("Inflow ",colnames(inflow_data)[(1+i)],sep="")) 
+        )
+}
+
+#using package ggplot2 to make boxplots
+for(i in 1:nhydro){
+  print(ggplot(inflow_data, aes(inflow_data[,(1+i)])) +
+            geom_boxplot() +
+            xlab(paste0("Inflow ",colnames(inflow_data)[(1+i)],sep="")) 
+        )
+}
+
+```
+
+Note from the plots that some reservoirs have many points outside the box. But it's hard to tell if those are outliers or not because we are looking at the time series with all its components. 
+
+
+## Decomposing the time series
+
+The stats package has a function called decompose(). This function only take time series object. As the name says the decompose function will decompose your time series into three components: trend, seasonal and random. This is similar to what we did in the previous script, but in a more automated way. 
+
+The random component is the time series without seasonal and trend component. Let's try to identify outliers by looking at the random component only.
+
+```{r}
+#Using R decompose function
+iHP=1
+decompose_inflow_data=decompose(ts_inflow_data[,iHP],"additive")
+plot(decompose_inflow_data)
+
+#Inspect random component
+inflow_random <- decompose_inflow_data$random   
+mean_inflow <- mean(inflow_random)  
+sd_inflow <- sd(inflow_random)
+
+cat(mean_inflow,sd_inflow)
+#Note random series has some missing values, that is why we got NAs
+
+#Compute mean and standard deviation without missing values
+mean_inflow <- mean(na.exclude(inflow_random))  #exclude NA or missing observation to compute mean and std
+sd_inflow <- sd(na.exclude(inflow_random))
+
+cat(mean_inflow,sd_inflow)
+
+
+```
+## Missing observations
+
+The decompose function introduced NAs in the beginning and end of the data set. Let's just remove them. NAs on the tails can be simply removed.
+
+```{r}
+#Create data frame for further use with new random series
+inflow_random <- data.frame(date=my_date,month=as.factor(month(my_date)),inflow=as.numeric(inflow_random))
+
+#How many NAs we have, you can get it from summary or using is.na()
+sum(is.na(inflow_random$inflow))
+
+#We have NAs in the beginning and end of data, just remove them
+head(inflow_random,10)
+tail(inflow_random,10)
+
+#Just remove them
+inflow_random <- na.omit(inflow_random)
+
+#Check data again
+sum(is.na(inflow_random$inflow))
+head(inflow_random,10)
+tail(inflow_random,10)
+
+```
+Data is ready!
+
+## Visualizing outliers in R
+
+```{r}
+#Generating a box plot by factor where factor is month of the year
+ggplot(inflow_random, aes(x=month, y=inflow)) +
+            geom_boxplot()
+
+ggplot(inflow_random, aes(x=date, y=inflow)) +
+            geom_line() +
+            geom_abline(slope=0,intercept=3*sd_inflow,color="red") +
+            geom_abline(slope=0,intercept=-3*sd_inflow,color="red")
+
+ggplot(inflow_random, aes(y=inflow)) +
+            geom_boxplot() 
+```
+
+Since we removed the seasonal and trend component, the mean of the random series should be close to zero. Note that from the line plot with the red lines we see that we do have some outliers. The outliers could be due to error collecting the data or an extreme event. Either way, we may want to remove/replace them before fitting a model to our data set to avoid the effect of outliers on our model coefficients. 
+
+The box plots are showing more detailed information about the probability distribution for each month of the year. Note that the same months have larger standard deviations.
+
+
+## Using pre-built functions for outlier detection 
+
+We will explore a few function for outlier detection in R. 
+
+outlier(): this function identifies the value that deviates the most from the mean, but does not run any statistical test to check if most deviating value is an outlier
+
+chisq.out.test(): this function will check if extreme value is an outlier using hypothesis testing. The null hypothesis for the test is "H0: extreme value not an outlier". Remember to look at p-value to make the decision whether to reject H0 or not.
+
+grubbs.test(): this function will also check if extreme value is an outlier using hypothesis testing. The null hypothesis for the test is "H0: extreme value not an outlier". Remember to look at p-value to make the decision whether to reject H0 or not.
+
+rm.outlier(): if the result from the chi test tells you the extreme value is an outlier, then you can use this function to remove it or replace by sample mean or median. 
+
+When working with time series you cannot simply remove an outlier. Remember that in TSA we care about the time dependence structure, therefore eliminating observations is not an option. Instead we replace it with another value - preferably the local mean. 
+                      
+
+```{r}
+#Just find extreme value
+outlier(inflow_random$inflow) 
+                  
+#Function chisq.out.test check if extreme value is outlier
+chi_test <- chisq.out.test(inflow_random$inflow,var(inflow_random$inflow))
+print(chi_test) #look at the p-value to find the decision 
+
+#If you need to remove outlier use rm.outlier()
+inflow_random$inflow <- rm.outlier(inflow_random$inflow,fill=TRUE) #using fill equal true the value will be replaced by mean or median 
+#Since we removed seasonality replacing with overall mean instead of local mean is acceptable
+
+#Plot series again and look for more outliers
+ggplot(inflow_random, aes(x=date, y=inflow)) +
+            geom_line() +
+            geom_abline(slope=0,intercept=3*sd_inflow,color="red") +
+            geom_abline(slope=0,intercept=-3*sd_inflow,color="red")
+```
+
+Note we sill have some outliers.
+
+You can repeat the produce until the next extreme value is not an outlier or write a loop as below.
+
+```{r}
+summary(inflow_random$inflow)
+
+#Writing a loop to remove all outliers
+#Loop while to remove all outliers
+pvalue <- 0 #just making sure we enter the while loop
+aux_inflow <- inflow_random$inflow  #Create a new vector for inflow_random just to make sure we don't loose information
+nout <- 0 #keep track of number of outliers removed
+while(pvalue < 0.05){ #the algorithm only enter the loop if the p-value 
+                 #of first chi_test is less than 0.05 i.e. if there 
+                 #is an outlier that needs to be removed
+  out_test <- grubbs.test(aux_inflow,type=10)
+  pvalue <- out_test$p.value   #Update p-value every time we run the test for a new Aux_Y
+  
+  if(pvalue < 0.05){
+    aux_inflow <- rm.outlier(aux_inflow,fill=TRUE) #replacing outliers
+    nout <- nout+1
+  } 
+}
+cat("Number of outliers removed: ",nout,"\n")
+
+#Replaced original data with data without outliers
+inflow_random$inflow <- aux_inflow
+
+#Do the plots again
+ggplot(inflow_random, aes(x=date, y=inflow)) +
+            geom_line() +
+            geom_abline(slope=0,intercept=3*sd_inflow,color="red") +
+            geom_abline(slope=0,intercept=-3*sd_inflow,color="red")
+
+ggplot(inflow_random, aes(y=inflow)) +
+            geom_boxplot() 
+
+#Check the data
+summary(inflow_random$inflow)
+
+
+```
+
+
+
