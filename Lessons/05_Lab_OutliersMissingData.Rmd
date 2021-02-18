@@ -1,0 +1,140 @@
+---
+title: "Lab 5: Outliers and Missing Data"
+author: "Luana Lima"
+date: "02/11/2021"
+output: pdf_document
+---
+
+## Objectives
+1. Answer questions on M4/M5
+2. Show additional ways to handle outliers and missing data
+3. Work with another dataset
+
+## Setting R code chunk options
+
+First R code chunk is used for setting the options for all R code chunks. The choice echo=TRUE means both code and output will appear on report, include = FALSE neither code nor output is printed.
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(echo = TRUE,tidy.opts=list(width.cutoff=80), tidy=FALSE) 
+```
+
+## Loading packages and initializing
+
+Second R code chunk is for loading packages. By setting message = FALSE, the code will appear but not the output. 
+
+```{r package, message=FALSE}
+library(lubridate)
+library(ggplot2)
+library(forecast)
+library(Kendall)
+library(tseries)
+
+#New packages for M5
+#install.packages("outliers")
+library(outliers)
+#install.packages("tidyverse")
+library(tidyverse)
+
+```
+
+## Importing and preparing data
+
+Let's continue working with our inflow data for reservoirs in Brazil. 
+
+```{r}
+
+#Importing time series data from text file#
+wind_data <- read.csv(file="../Data/Wind_Speed_PortArthurTX_Processed.csv",header=TRUE,stringsAsFactors = TRUE)
+
+#creating data object
+wind_data$DATE <- ym(wind_data$DATE)
+
+```
+
+
+## Transforming data into time series object
+
+Many of the functions we will use require a time series object. You can transform your data in a time series using the function *ts()*. 
+
+```{r}
+ts_wind_data <- ts(wind_data$AWND.1,frequency=12) 
+
+```
+
+## Initial plots
+
+Common plots for outlier detection are histograms and boxplots. Histograms will help you understand the shape and spread of the data and to identify any potential outliers. And boxplots will give more information on the spread of the data. 
+
+```{r}
+#using package ggplot2 to make histograms
+
+ggplot(wind_data, aes(x = DATE, y = AWND.1)) +
+  geom_line() +
+  xlab("Average Wind Speed") 
+
+```
+## Using pre-built functio to clean series
+
+tsclean() from package forecast identify and replace outliers and missing values in a time series using linear interpolation.
+
+```{r}
+
+clean_wind_data <- tsclean(ts_wind_data)  #object should be a time series
+
+full_wind_data <- data_frame(Date=wind_data$DATE, Wind = wind_data$AWND.1, Wind_Clean = as.numeric(clean_wind_data))
+
+ggplot(full_wind_data, ) +
+  geom_line(aes(x = Date, y = Wind_Clean), color = "red") +
+  geom_line(aes(x = Date, y = Wind), color = "black") +
+  ylab("Average Wind Speed") 
+  
+
+```
+
+
+## Decomposing the time series
+
+The stats package has a function called decompose(). This function only take time series object. As the name says the decompose function will decompose your time series into three components: trend, seasonal and random. This is similar to what we did in the previous script, but in a more automated way. 
+
+The random component is the time series without seasonal and trend component. Let's try to identify outliers by looking at the random component only.
+
+Additional info on decompose()
+
+1) You have two options: alternative and multiplicative. Multiplicative models exhibit a change in frequency over time.
+
+2) The trend is not a straight line because it uses a moving average method to detect trend. 
+
+3) The seasonal component of the time series is found by subtracting the trend component from the original data then grouping the results by month and averaging them. 
+
+4) The random component, also referred to as the noise component, is composed of all the leftover signal which is not explained by the combination of the trend and seasonal component. 
+
+```{r}
+#Ex1: Using R decompose function decompose the wind data in seasonal, trend and random
+decompose_wind_data=decompose(clean_wind_data)
+plot(decompose_wind_data)
+
+#Ex2: Store the three component in separte vector
+wind_random <- decompose_wind_data$random   
+wind_trend <- decompose_wind_data$trend
+wind_seasonal <- decompose_wind_data$seasonal   
+
+#Ex3: Create one data frame with all three vector and teh Date columns from wind_data
+df_wind_decomposed <- data.frame(wind_trend,wind_seasonal,wind_random)
+
+#Ex4: Inspect the data frame using head() and tail()
+head(df_wind_decomposed,10)
+tail(df_wind_decomposed,10)
+# Discuss the results
+
+```
+
+Discussion: Why the missing values?? 
+
+## Coding challenge
+```{r}
+
+#Ex5: Try to reproduce the trend component from decompose().
+
+
+```
+
