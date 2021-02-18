@@ -135,6 +135,12 @@ Discussion: Why the missing values??
 
 #Ex5: Try to reproduce the trend component from decompose().
 
+nobs <- 44
+na=12 
+
+rep_trend <- array(NA, length= clean_wind_data) 
+for (i in 1: nobs-6){ 
+rep_trend[i] = ts_wind_data[i-7:i-1,]+ ts_wind_data[i:i-5,])/12}
 
 ```
 
