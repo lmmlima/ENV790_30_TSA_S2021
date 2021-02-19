@@ -118,7 +118,7 @@ plot(inflow_data[,"HP1"],inflow_data[,"HP2"])
 
 ## Improving plots with time period information and ggplot
 
-We could improve the plots generated in the previous sections using another package *ggplot2*. Package ggplot2 offers better looking plots, additional fucntionalities, easy incorporation of the date labels, legends, etc.  Let's see how we would reproduce the plots from the previous section with ggplot2.
+We could improve the plots generated in the previous sections using another package *ggplot2*. Package ggplot2 offers better looking plots, additional functionalities, easy incorporation of the date labels, legends, etc.  Let's see how we would reproduce the plots from the previous section with ggplot2.
 
 ```{r}
 #using package ggplot2
