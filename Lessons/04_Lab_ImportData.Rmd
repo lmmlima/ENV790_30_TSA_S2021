@@ -1,0 +1,87 @@
+---
+title: "Lab 4: Importing Data Sets"
+author: "Luana Lima"
+date: "02/10/2021"
+output: pdf_document
+---
+
+## Setting R code chunk options
+
+First R code chunk is used for setting the options for all R code chunks. The choice echo=TRUE means both code and output will appear on report, include = FALSE neither code nor output is printed.
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(echo = TRUE,tidy.opts=list(width.cutoff=80), tidy=FALSE) 
+```
+
+## Loading packages and initializing
+
+Second R code chunk is for loading packages. By setting message = FALSE, the code will appear but not the output. 
+
+```{r package, message=FALSE}
+library(lubridate)
+library(ggplot2)
+library(forecast)
+library(Kendall)
+library(tseries)
+
+```
+
+## Importing data with read.xlsx()
+
+Importing data set without change the original file using read.xlsx
+
+```{r}
+library(xlsx)
+
+energy_data1 <- read.xlsx(file="../Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx",header=FALSE,startRow = 13,sheetIndex=1) #startRow is equivalent to skip on read.table
+
+#Now let's extract the column names from row 11
+read_col_names <- read.xlsx(file="../Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx",header=FALSE,startRow = 11,endRow=11,sheetIndex=1)
+
+colnames(energy_data1) <- read_col_names
+head(energy_data1)
+```
+
+## Importing data with read_excel()
+
+```{r}
+library(readxl)
+
+#Importing data set without change the original file using read.xlsx
+energy_data2 <- read_excel(path="./Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx",skip = 12, sheet="Monthly Data",col_names=FALSE) 
+
+#Now let's extract the column names from row 11
+read_col_names <- read_excel(path="./Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx",skip = 10,n_max = 1, sheet="Monthly Data",col_names=FALSE) 
+
+colnames(energy_data2) <- read_col_names
+head(energy_data2)
+
+ts_energy <- ts(energy_data2[2:14])
+
+```
+
+## Importing data with read.csv()
+
+```{r}
+#no need to library additional packages
+
+#Importing data set after manipulating original data file xlsx
+energy_data3 <- read.csv(file="../Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx", header = TRUE, stringsAsFactors = TRUE) 
+
+#check that colnames are already stored because we deleted the units line so we were able to automatically import it
+colnames(energy_data3)
+head(energy_data3)
+```
+
+## Importing data with read.table()
+
+```{r}
+#no need to library additional packages
+
+#Importing data set after manipulating original data file xlsx
+energy_data4 <- read.table(file="../Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx", header=TRUE,sep = ",",dec = ".") 
+
+#check that colnames are already stored because we deleted the units line so we were able to automatically import it
+colnames(energy_data4)
+head(energy_data4)
+```
