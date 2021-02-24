@@ -1,0 +1,151 @@
+---
+title: "Lab 6: ARIMA Models in R"
+author: "Luana Lima"
+date: "02/24/2021"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Objectives
+
+1. Answer questions on A4 (due today)
+2. Answer questions on M6 videos - ARIMA
+3. Visualize AR,MA and ARMA models
+4. Fit ARIMA model to another dataset - Breakout rooms
+
+## Setting R code chunk options
+
+First R code chunk is used for setting the options for all R code chunks. The choice echo=TRUE means both code and output will appear on report, include = FALSE neither code nor output is printed.
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(echo = TRUE,tidy.opts=list(width.cutoff=80), tidy=FALSE) 
+```
+
+## Loading packages and initializing
+
+Second R code chunk is for loading packages. By setting message = FALSE, the code will appear but not the output. 
+
+```{r package, message=FALSE}
+library(lubridate)
+library(ggplot2)
+library(forecast)  
+library(Kendall)
+library(tseries)
+library(outliers)
+library(tidyverse)
+```
+
+## Importing and preparing data
+
+```{r}
+#Importing time series data from text file
+raw_inflow_data <- read.table(file="../Data/inflowtimeseries.txt",header=FALSE,skip=0)
+
+#Trim the table to include only columns you need
+nhydro <- ncol(raw_inflow_data)-2
+nobs <- nrow(raw_inflow_data) 
+
+#If your file does not have header like this one you can add column names after 
+#creating the data frame
+colnames(raw_inflow_data)=c("Month","Year", "HP1", "HP2","HP3","HP4", "HP5",
+                            "HP6","HP7", "HP8","HP9","HP10", "HP11","HP12", 
+                            "HP13", "HP14","HP15")
+
+#creating data object
+#using package lubridate
+my_date <- paste(raw_inflow_data[,1],raw_inflow_data[,2],sep="-")
+my_date <- my(my_date)  #function my from package lubridate
+
+#add that to inflow_data and store in a new data frame 
+inflow_data <- cbind(my_date,raw_inflow_data[,3:(3+nhydro-1)])
+
+#Remove last for rows by replacing current data frame
+inflow_data <- inflow_data[1:(nobs-4),]
+
+#update object with number of observations
+nobs <- nobs-4
+
+# Transforming data into time series object
+ts_inflow_data <- ts(inflow_data[,2:(2+nhydro-1)],
+                     start=c(year(inflow_data$my_date[1]),month(inflow_data$my_date[1])),frequency=12) 
+
+```
+
+
+## Decomposing the time series and removing seasonality
+
+Since we are working with non-seasonal ARIMA, we need to decompose the series and eliminate the seasonality.
+
+```{r}
+#Exercise 1: Using R decompose function to decompose the inflow time series for HP15
+
+
+
+```
+
+To take seasonality only out of the data set, we will use function seasadj() from package forecast. The function returns seasonally adjusted data constructed by removing the seasonal component. It takes one main object that should be created using decompose() function.
+
+The ACF and PACF from the seasonal adjusted series will help you specify components **p** and **q** of the ARIMA(p,d,q).
+
+```{r}
+
+#Exercise 2: Creating non-seasonal inflow series for HP 15 using seasadj() function
+
+
+
+#Exercise 3: Compare ACFs for full series and deseason series
+par(mfrow=c(1,2))
+
+
+
+#Exercise 4: Compare PACFs for full series and deseason series
+par(mfrow=c(1,2))
+
+
+```
+
+
+## Run stationarity test
+
+Always check for stationarity before fitting ARIMA models. This will help specify component **d** of the ARIMA(p,d,q). If there is a trend you need to set **d=1**.
+
+```{r}
+
+#Exercise 5: Run ADF/Mann Kendall on deseasonal series and find the value of d
+
+
+
+```
+
+
+## Manually fitting ARIMA models to series
+
+In the section we will manually fit ARIMA models to the residential electricity price series using function Arima() from package *forecast*. 
+Some important arguments for Arima() are:
+
+*y*: univariate (single vector) ts object 
+*order=c( , , )*: three orders (p,d,q) of non-seasonal part of the ARIMA in this order
+*include.mean*: the default is TRUE for undifferenced series, which means the model will include a mean term, and FALSE when d > 0
+*include.drift*: the default is FALSE, but changing to TRUE might lead to better fits. The drift will be necessary when the series mean is not zero even after differencing
+
+```{r}
+#Exercise 6: Fit an Arima model to you deseason series
+
+
+
+```
+
+## Automatically fitting ARIMA
+
+Now that you have played with different order, let's try the auto.arima() function from the base package *stats*. The best fit for this time series is a ARIMA(2,1,2) with drift.
+
+```{r}
+#Exercise 7: Use auto.arima to find the best fit for teh deseason series. Does that match your solution to Exercise 5?
+
+
+```
+
+
+
+
