@@ -39,33 +39,48 @@ library(dplyr)
 For this part you will once again work only with the following columns: Total Biomass Energy Production, Total Renewable Energy Production, Hydroelectric Power Consumption. Create a data frame structure with these three time series and the Date column. Don't forget to format the date object.
 
 ```{r}
-Table_new1 <- read.csv("../Data/table102.csv", header=TRUE)
-energy <- Table_new1[,c(1,4,5,6)]
+Table_1<- read.csv("../Data/table102.csv", header=TRUE)
 
-colnames(energy)=c("Month","Biomass_Energy", "Renewable_Energy", "Hydro_Power")
+first <- 
+  Table_1 %>%
+  select("Month","Bio","Renew","Hydro") %>% 
+  mutate(Bio = as.numeric(Bio), Renew = as.numeric(Renew), Hydro = as.numeric(Hydro))%>% 
+  drop_na(Bio,Renew, Hydro)
 
-my_date <- paste(energy[,1])
+my_date <- paste(first[,1])
 my_date <- ym(my_date) 
 
+new_first <- cbind(my_date,first[,2:4])
 
-new_energy <- cbind(my_date,energy[,2:4])
-ts_energy <- ts(new_energy[,2:4],frequency=12) 
+ts_first <- ts(new_first[,2:4],frequency=12) 
 
-nenergy <- ncol(new_energy)-1
-nobs <- nrow(new_energy)
+
 ```
 
 Lag1? 
 ### Q1 
 Now let's try to difference these three series using function diff(). Start with the original data from part (b). Try differencing first at lag 1 and plot the remaining series. Did anything change? Do the series still seem to have trend?
 
+Yes the plot looks different than the orgional data series. The diff() removed the decreasing mean trend component in the biomas and renewable series as you know longer have highly correlated lags. However by removing the trend it appears that the seasonality component of the series is more pronounced. The Biomass and renewable energy production both appear to have some degree of seasonality.
+
+The hydro power production chart did not change very much if at all. The trend in this seris was not significant. The seasonality can be seen in both the diff and orgional plot)
 ```{r}
-difference_energy <- diff(ts_energy, differences=1)
+
+nenergy <- ncol(new_first)-1
+for(i in 1:nenergy){
+  par(mfrow=c(1,2))  
+  Acf(ts_first[,i],lag.max=40,main=paste("Trillion_BTU_ ",colnames(ts_first)[(i)],sep="")) 
+  Pacf(ts_first[,i],lag.max=40,main=paste("Trillion_BTU_",colnames(ts_first)[(i)],sep=""))}
+  
+difference_energy <- diff(ts_first, differences=1)
+
+nenergy <- ncol(new_first)-1
+nobs <- nrow(new_first)
 
 for(i in 1:nenergy){
   par(mfrow=c(1,2))  
-  Acf(difference_energy[,i],lag.max=40,main=paste("Trillion_BTU_ ",colnames(new_energy)[(1+i)],sep="")) 
-  Pacf(difference_energy[,i],lag.max=40,main=paste("Trillion_BTU_",colnames(new_energy)[(1+i)],sep=""))
+  Acf(difference_energy[,i],lag.max=40,main=paste("Difference_ ",colnames(ts_first)[(i)],sep="")) 
+  Pacf(difference_energy[,i],lag.max=40,main=paste("Difference_",colnames(ts_first)[(i)],sep=""))
 }
 ```
 
@@ -73,48 +88,53 @@ I keep getting the sam seasonmannkendall value?
 ### Q2
 Compute Mann-Kendall and Spearman's Correlation Rank Test for each time series. Ask R to print the results. Interpret the results.
 
+Mann-kendall checks for deterministic trend . When running the test for each series the P value was less than 0.05 and I failed to reject the null, thus my series are not stationary, the data follows a trend for biomass, renewable and hydro production. The Score for the biomass energy was 116743 which is a high score, the score for renewable was 107415 which is also quite high, score indicates how many times the observation increased. The hydropower production score was negative indicating the the observation decrease over time. 
+
+Spearman's correlation Rank 
+
+The correlation coefficient in both test on the biomass series and renewable enrgy tend had a p value above 0.7, thus both correlations where significant. The p-value in both thest was less than 0.05 thus I failed to reject the null that the data is stationary, and both series have a trend. 
+
+The correlation coefficent was run on hydro power production. The P-valuewas -0.47 
+so while high it is not significant. The P value for this serries was also less than 0.05, thus I failed to reject the null, the hydro power production series is not stationary.
+
+
 ```{r}
 
-# Checking Trends for Biomass Production 
+for(i in 1:nenergy){
+SMKtest <- MannKendall(ts_first[,i])
+print(summary(SMKtest))
+}
 
-i=1
-new_energy_matrix <- matrix(ts_energy[,i], byrow = FALSE, nrow=12)
-new_energy_yearly <- colMeans(new_energy_matrix)
+# spearmna correlation rank test Bomass energy 
 
-my_year <-c(year(first(my_date)):year(last(my_date)))
-energy_yearly <- data.frame(my_year, new_energy_yearly)
+bio_matrix <- matrix(ts_first[,1], byrow = FALSE, nrow=12)
+bio_yearly <- colMeans(bio_matrix)
 
-SMKtest_1 <- SeasonalMannKendall(ts_energy[,i])
-print(summary(SMKtest_1))
+my_year=c(year(first(my_date)):year(last(my_date)))
+new_bio_yearly <- data.frame(my_year, bio_yearly)
 
-sp_rho=cor(energy_yearly,my_year,method = "spearman")
+sp_rho=cor.test(bio_yearly,my_year,method = "spearman")
 print(sp_rho)
 
-i=2
-new_energy_matrix <- matrix(ts_energy[,i], byrow = FALSE, nrow=12)
-new_energy_yearly <- colMeans(new_energy_matrix)
 
-my_year <-c(year(first(my_date)):year(last(my_date)))
-energy_yearly <- data.frame(my_year, new_energy_yearly)
+#Renewable
+renew_matrix <- matrix(ts_first[,2], byrow = FALSE, nrow=12)
+renew_yearly <- colMeans(renew_matrix)
+my_year=c(year(first(my_date)):year(last(my_date)))
 
-SMKtest_2 <- SeasonalMannKendall(ts_energy[,i])
-print(summary(SMKtest_2))
 
-sp_rho=cor(energy_yearly,my_year,method = "spearman")
-print(sp_rho)
+sp_rho_2=cor.test(renew_yearly,my_year,method = "spearman")
+print(sp_rho_2)
 
-i=3
-new_energy_matrix <- matrix(ts_energy[,i], byrow = FALSE, nrow=12)
-new_energy_yearly <- colMeans(new_energy_matrix)
 
-my_year <-c(year(first(my_date)):year(last(my_date)))
-energy_yearly <- data.frame(my_year, new_energy_yearly)
+#Hydro
+hydro_matrix <- matrix(ts_first[,3], byrow = FALSE, nrow=12)
+hydro_yearly <- colMeans(hydro_matrix)
+my_year=c(year(first(my_date)):year(last(my_date)))
 
-SMKtest_3 <- SeasonalMannKendall(ts_energy[,i])
-print(summary(SMKtest_3))
 
-sp_rho=cor(energy_yearly,my_year,method = "spearman")
-print(sp_rho)
+sp_rho_3=cor.test(hydro_yearly,my_year,method = "spearman")
+print(sp_rho_3)
 ```
 
 
@@ -129,26 +149,22 @@ Create a data frame structure with these two time series only and the Date colum
 
 ```{r}
 Table_new1 <- read.csv("../Data/table102.csv", header=TRUE)
-renewable <- Table_new1[,c(1,7,8)]
 
-colnames(renewable)=c("Month","Solar", "Wind")
+renewable <- 
+  Table_new1 %>%
+  select("Month","Solar.Energy.Consumption","Wind.Energy.Consumption") %>% 
+  rename(Date = "Month", Solar_Consumption = "Solar.Energy.Consumption",Wind_Consumption = "Wind.Energy.Consumption") %>%
+  mutate(Solar_Consumption = as.numeric(Solar_Consumption), Wind_Consumption = as.numeric(Wind_Consumption)) %>% drop_na(Solar_Consumption,Wind_Consumption)
 
 my_date <- paste(renewable[,1])
 my_date <- ym(my_date) 
 
 new_renewable <- cbind(my_date,renewable[,2:3])
 
-renew_solar <- as.numeric(as.character(new_renewable$Solar))
-new_solar <- na.omit(renew_solar)
+ts_renewable <- ts(new_renewable[,2:3],frequency=12) 
 
-
-renew_wind <- as.numeric(as.character(new_renewable$Wind))
-new_wind <- na.omit(renew_wind)
-
-solar<- cbind(my_date,new_solar,new_wind)
-
-ts_solar <- ts(solar[,2:3])
-
+ncolumn <- ncol(new_renewable)-1
+nobs <- nrow(new_renewable)
 
 ```
 
@@ -163,27 +179,24 @@ Hint: use *scale_x_date(date_breaks = "5 years", date_labels = "%Y")")*
 Try changing the color of the wind series to blue. Hint: use *color = "blue"*
 
 ```{r}
-
-
-
-
-ggplot(data=new_renewable, aes(x=my_date, y=new_renewable$Solar)) + geom_line(color="green")+
-            ylab(paste0("Trillion_BTU")) +  geom_line(aes(y=new_renewable$Wind), col="blue")
+ggplot(data=new_renewable, aes(x=my_date, y=new_renewable$Solar_Consumption)) + geom_line(color="green")+
+            ylab(paste0("Trillion BTU")) +xlab(paste0("Date"))+ geom_line(aes(y=new_renewable$Wind_Consumption), col="blue")+scale_x_date(date_breaks = "5 years", date_labels = "%Y")
 ```
 
 ### Q5
 
 Transform wind and solar series into a time series object and apply the decompose function on them using the additive option. What can you say about the trend component? What about the random component? Does the random component look random? Or does it appear to still have some seasonality on it?
 
+The trend component for the increases in the last half to last quater of the time series for both wind and solar. There is very little increase across the means in the first half of the plot but then there is a uptick in the means for the later times.
+
+For the solar component the random seems to still have a seasonality component to it as it varies from positive to negative in a very repetitive manner. When you reach time 30 the random component has a greater absolute variance but still seems to have a seasonal trend. While the first observations fluxuate seasonally in the wind component once you reach 25 the wind random component looks more naturally random and does not appear to have a clear seasonality trend. 
 ```{r}
 
-ts_solar <- ts(solar[,2])
-
-decompose_solar=decompose(ts_solar,"additive")
-
-
-#Inspect random component
+#Solar
+i=1
+decompose_solar=decompose(ts_renewable[,i],"additive")
 solar_random <- decompose_solar$random   
+plot(decompose_solar, x.y.labels= "Solar_Production")
 
 mean_solar <- mean(na.exclude(solar_random))  
 sd_solar <- sd(na.exclude(solar_random))
@@ -197,7 +210,6 @@ plot(decompose_wind)
 
 #Inspect random component
 wind_random <- decompose_wind$random   
-
 mean_wind <- mean(na.exclude(wind_random))  
 sd_wind <- sd(na.exclude(wind_random))
 cat(mean_wind,sd_wind)
@@ -207,12 +219,24 @@ cat(mean_wind,sd_wind)
 
 Use the decompose function again but now change the type of the seasonal component from additive to multiplicative.
 What happened to the random component this time? 
+
+The random component under the multiplicative seems to flip. Meaning in that the randomness is apparent in solar production random component for the first time readings 0-5, how after this the series seems to vary seasonally and follows the same low variance throughout the remaining time readings. In the wind  production random component, the variance appears random from time readings 0-18. After this the variance is significantly less in terms of absolute variance. However there does not to be a clear seasonal trend but certainly appears less random.
 ```{r}
 
+#Solar
+i=1
+decompose_solar_m=decompose(ts_renewable[,i],"multiplicative")
+plot(decompose_solar_m)
+
+#Wind 
+i=2
+decompose_wind_m=decompose(ts_renewable[,i],"multiplicative")
+plot(decompose_wind_m)
 ```
 
 ### Q7
 
 When fitting a model to this data, do you think you need all the historical data? Think about the date from 90s and early 20s. Are there any information from those year we might need to forecast the next six months of Solar and/or Wind consumption. Explain your response.
 
-Yes, 
+
+I think we do not need all of the historical data. The random component occurs later in the time serries and would likely be more valuable to forecast data from early 20s. The decompose function which was what was performed above utilizes a moving average technique, the decompose function specifies the frequency is 12, finding the average of 6 prior and 6 next observations of a specific time. The decompose is finding the 6 prior observations to compute the mean. That is why you get na for the fist and last 6 of the data set. The moving average replaces observations, with the mean. Thus it will be important to forcast last 6 of the series as data set increases with time and it might not be the best to simply replace the last 6 with the mean. 

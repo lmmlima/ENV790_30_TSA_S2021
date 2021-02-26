@@ -39,7 +39,7 @@ For this module we will work with monthly average for electricity retail price i
 ```{r}
 
 #Importing time series data from text file#
-electricity_price <- read.csv(file="./Data/Average_retail_price_of_electricity_United_States_monthly.csv",header=TRUE,skip=4)
+electricity_price <- read.csv(file="../Data/Average_retail_price_of_electricity_United_States_monthly.csv",header=TRUE,skip=4)
 
 #Inspect data
 head(electricity_price)
@@ -48,7 +48,7 @@ nobs <- nrow(electricity_price)
 
 #Preparing the data - create date object and rename columns
 electricity_price_processed <-
-  electricity_price %>%
+  electricity_price %>% 
   mutate( Month = my(Month) ) %>% 
   rename( All.sectors = all.sectors.cents.per.kilowatthour ) %>% 
   rename( Residential = residential.cents.per.kilowatthour ) %>% 

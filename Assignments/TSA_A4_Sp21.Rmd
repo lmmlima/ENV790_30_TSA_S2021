@@ -23,7 +23,11 @@ R packages needed for this assignment:"forecast","tseries", and "Kendall". Insta
 
 ```{r}
 #Load/install required package here
-
+library(lubridate)
+library(ggplot2)
+library(forecast)
+library(Kendall)
+library(tseries)
 ```
 
 
@@ -32,14 +36,63 @@ R packages needed for this assignment:"forecast","tseries", and "Kendall". Insta
 For this part you will once again work only with the following columns: Total Biomass Energy Production, Total Renewable Energy Production, Hydroelectric Power Consumption. Create a data frame structure with these three time series and the Date column. Don't forget to format the date object.
 
 ```{r}
+Table_new1 <- read.csv("../Data/table102.csv", header=TRUE)
+energy <- Table_new1[,c(1,4,5,6)]
 
+colnames(energy)=c("Month","Biomass_Energy", "Renewable_Energy", "Hydro_Power")
+
+my_date <- paste(energy[,1])
+my_date <- ym(my_date) 
+
+new_energy <- cbind(my_date,energy[,2:4])
+ts_energy <- ts(new_energy[,2:4],frequency=12) 
 ```
 
 ### Q1
 Now let's try to difference these three series using function diff(). Start with the original data from part (b). Try differencing first at lag 1 and plot the remaining series. Did anything change? Do the series still seem to have trend?
 
+```{r}
+diff(new_energy)
+```
+
+
 ### Q2
-Compute Mann-Kendall and Spearman's Correlation Rank Test for each time series. Ask R to print the results. Interpret the results. 
+Compute Mann-Kendall and Spearman's Correlation Rank Test for each time series. Ask R to print the results. Interpret the results.
+
+```{r}
+
+# Checking Trends for Biomass Production 
+
+i=1
+print("Results for ADF test/n")
+print(adf.test(ts_energy[,i],alternative = "stationary"))
+
+i=1
+SMKtest <- SeasonalMannKendall(ts_energy[,i])
+print(summary(SMKtest))
+
+
+#Checking Trends for Renewable production 
+
+i=2
+print("Results for ADF test/n")
+print(adf.test(ts_energy[,i],alternative = "stationary"))
+
+i=2
+SMKtest <- SeasonalMannKendall(ts_energy[,i])
+print(summary(SMKtest))
+
+#Checking Trends for Hydro Power production 
+i=3
+SMKtest <- SeasonalMannKendall(ts_energy[,i])
+print(summary(SMKtest))
+
+
+i=3
+print("Results for ADF test/n")
+print(adf.test(ts_energy[,i],alternative = "stationary"))
+```
+
 
 ## Decomposing the series
 
