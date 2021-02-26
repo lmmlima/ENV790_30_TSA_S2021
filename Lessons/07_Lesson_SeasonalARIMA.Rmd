@@ -1,0 +1,241 @@
+---
+title: "M7: Seasonal ARIMA Models in R"
+author: "Luana Lima"
+date: "02/25/2021"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Setting R code chunk options
+
+First R code chunk is used for setting the options for all R code chunks. The choice echo=TRUE means both code and output will appear on report, include = FALSE neither code nor output is printed.
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(echo = TRUE,tidy.opts=list(width.cutoff=80), tidy=FALSE) 
+```
+
+## Loading packages and initializing
+
+Second R code chunk is for loading packages. By setting message = FALSE, the code will appear but not the output. 
+
+```{r package, message=FALSE}
+library(lubridate)
+library(ggplot2)
+library(forecast)  
+library(Kendall)
+library(tseries)
+library(outliers)
+library(tidyverse)
+
+```
+
+## Importing data
+
+For this module we will work with monthly average for electricity retail price in US. The data is from the U.S. Energy Information Administration and can be download [here][https://www.eia.gov/electricity/data/browser/#/topic/7?agg=2,0,1&geo=g&freq=M%2013:41:41%20GMT-0500%20(EST)]. 
+
+```{r}
+
+#Importing time series data from text file#
+electricity_price <- read.csv(file="./Data/Average_retail_price_of_electricity_United_States_monthly.csv",header=TRUE,skip=4)
+
+#Inspect data
+head(electricity_price)
+nvar <- ncol(electricity_price) - 1
+nobs <- nrow(electricity_price)
+
+#Preparing the data - create date object and rename columns
+electricity_price_processed <-
+  electricity_price %>%
+  mutate( Month = my(Month) ) %>% 
+  rename( All.sectors = all.sectors.cents.per.kilowatthour ) %>% 
+  rename( Residential = residential.cents.per.kilowatthour ) %>% 
+  rename( Commercial = commercial.cents.per.kilowatthour ) %>% 
+  rename( Industrial = industrial.cents.per.kilowatthour ) %>% 
+  arrange( Month )
+
+head(electricity_price_processed)
+summary(electricity_price_processed)
+
+#No NAs so we don't need to worry about missing values
+
+```
+
+## Transforming data into time series object
+
+Many of the functions we will use require a time series object. You can transform your data in a time series using the function *ts()*. 
+
+```{r}
+ts_electricity_price <- ts(electricity_price_processed[,2:(nvar+1)],
+                           start=c(year(electricity_price_processed$Month[1]),month(electricity_price_processed$Month[1])),
+                           frequency=12) 
+#note that we are only transforming columns with electricity price, not the date columns  
+head(ts_electricity_price,15)
+tail(ts_electricity_price,15)
+
+```
+
+## Initial Plots
+
+```{r}
+#Generating a box plot by factor where factor is month of the year
+
+TS_Plot <- 
+  ggplot(electricity_price_processed, aes(x=Month, y=Residential)) +
+      geom_line()
+plot(TS_Plot)
+
+#Note that although the date is reversed on the data frame, since we are using the ggplot and a date object, the plot looks right. 
+
+#ACF and PACF plots
+par(mfrow=c(1,2))
+
+ACF_Plot <- Acf(electricity_price_processed$Residential, lag = 40, plot = TRUE)
+PACF_Plot <- Pacf(electricity_price_processed$Residential, lag = 40)
+
+```
+
+
+## Decomposing the time series 
+
+The plots from the previous section show the data has a seasonal component. Since we are working with non-seasonal ARIMA, we need to decompose the series and eliminate the seasonality.
+
+```{r}
+#Using R decompose function
+decompose_residential_price <- decompose(ts_electricity_price[,"Residential"],"additive")
+plot(decompose_residential_price)
+
+#The ACF plot show a slow decay which is a sign of non-stationarity.
+
+```
+
+This time we will not remove seasonality to enter the Arima(). But we still need to remove seasonal component to run stationarity test and find the order of the non-seasonal part of the ARIMA, i.e., (p,d,q).
+
+
+## Modeling the non-seasonal part
+
+Remember from previous scripts that the electricity price series has a stochastic trend. A useful function to help determine how many times you should difference your series is the ndiffs() from package 'forecast'.
+```{r}
+#Creating non-seasonal residential price time series
+deseasonal_residential_price <- seasadj(decompose_residential_price)  
+
+# Find out how many time we need to difference
+n_diff <- ndiffs(deseasonal_residential_price)
+cat("Number of differencing needed: ",n_diff)
+
+#Lets difference the series once at lag 1 to remove the trend.
+deseasonal_residential_price_diff <- diff(deseasonal_residential_price,differences=1,lag=1)
+
+#Add the new series to our data frame
+df_residential_full <- data.frame( Month = electricity_price_processed$Month,
+                             Residential = electricity_price_processed$Residential,
+                             NonSeasonalResidential = as.numeric(deseasonal_residential_price),
+                             ResidentialDiff = c(NA,as.numeric(deseasonal_residential_price_diff)))
+
+#Check autocorrelation plot again
+#Comparing ACFs
+par(mfrow=c(1,3))
+Acf(df_residential_full$Residential,lag.max=40,main="Residential",ylim=c(-.5,1))
+Acf(df_residential_full$NonSeasonalResidential,lag.max=40,main="Non Sesonal Residential",ylim=c(-.5,1))
+Acf(df_residential_full$ResidentialDiff,lag.max=40,main="Diff NonSeas Residential",ylim=c(-.5,1))
+
+#Comparing PACFs
+par(mfrow=c(1,3))
+Pacf(df_residential_full$Residential,lag.max=40,main="Residential",ylim=c(-.5,1))
+Pacf(df_residential_full$NonSeasonalResidential,lag.max=40,main="Non Sesonal Residential",ylim=c(-.5,1))
+Pacf(df_residential_full$ResidentialDiff,lag.max=40,main="Diff NonSeas Residential",ylim=c(-.5,1))
+```
+
+## Modeling the seasonal part
+
+I will not cover the hypothesis test associated with deterministic and stochastic seasonal component. We will use the nsdiffs() function to find if our series need differencing at the seasonal lag or not. The function will run the statistical tests internally. 
+
+```{r}
+# Find out how many time we need to difference
+ns_diff <- nsdiffs(ts_electricity_price[,"Residential"])
+cat("Number of seasonal differencing needed: ",ns_diff)
+
+#Lets difference the series once at lag 12 to remove the seasonal trend.
+residential_price_seas_diff <- diff(ts_electricity_price[,"Residential"],lag=12, differences=1)
+residential_price_trend_diff <- diff(ts_electricity_price[,"Residential"],lag =1, differences=1) #diff done on orig series
+residential_price_both_diff <- diff(residential_price_trend_diff,lag =12, differences=1)
+
+#Check autocorrelation plots for differenced series
+#Comparing ACFs
+par(mfrow=c(1,4))
+Acf(ts_electricity_price[,"Residential"],lag.max=40,main="Residential",ylim=c(-1,1))
+Acf(residential_price_seas_diff,lag.max=60,main="Seasonal-Differenced Residential",ylim=c(-1,1))
+Acf(residential_price_trend_diff,lag.max=60,main="Trend-Differenced Residential",ylim=c(-1,1))
+Acf(residential_price_both_diff,lag.max=60,main="Twice-Differenced Residential",ylim=c(-1,1))
+
+#Comparing PACFs
+par(mfrow=c(1,4))
+Pacf(ts_electricity_price[,"Residential"],lag.max=40,main="Residential",ylim=c(-1,1))
+Pacf(residential_price_seas_diff,lag.max=60,main="Seasonal-Differenced Residential",ylim=c(-1,1))
+Pacf(residential_price_trend_diff,lag.max=60,main="Trend-Differenced Residential",ylim=c(-1,1))
+Pacf(residential_price_both_diff,lag.max=60,main="Twice-Differenced Residential",ylim=c(-1,1))
+
+#Plot ACF and PACF for twice-differenced series - Steps 3 (order of non-seasonal) and 5 ) order of seasonal
+par(mfrow=c(1,2))
+Acf(residential_price_both_diff,lag.max=60,main="Twice-Differenced Residential",ylim=c(-1,1))
+Pacf(residential_price_both_diff,lag.max=60,main="Twice-Differenced Residential",ylim=c(-1,1))
+
+
+```
+
+Look at the twice differenced series to identify model order. 
+
+Note that we look at the ACF and PACF plot of the differenced series to try to find the order of the model. Here when we look at the first 12 lags for ACF & PACF we don't see slow decays but it looks like we have cut offs at lag 1 on both plots indicating an ARMA(p=1,q=1), and we know from ndiffs that d=1. 
+
+Now let's look at seasonal lags only (12,24,36,48). ACF has one spike at 12 and PACF has 2 spikes one at 12 and one at 24. This is an indication of a seasonal moving average (SMA). Therefore the order of seasonal component is P=0 and Q=1. We know from nsdiffs that D=1.  
+
+## Manually fitting seasonal ARIMA to original series
+
+```{r}
+
+SARIMA_manual <- Arima(ts_electricity_price[,"Residential"],order=c(1,1,1),seasonal=c(0,1,1),include.drift=FALSE)
+print(SARIMA_manual)
+
+par(mfrow=c(1,3))
+ts.plot(SARIMA_manual$residuals)
+Acf(SARIMA_manual$residuals,lag.max=40)
+Pacf(SARIMA_manual$residuals,lag.max=40)
+
+
+```
+
+## Automatically fitting seasonal ARIMA to original series
+
+```{r}
+
+SARIMA_autofit <- auto.arima(ts_electricity_price[,"Residential"])
+print(SARIMA_autofit)
+
+par(mfrow=c(1,3))
+ts.plot(SARIMA_autofit$residuals)
+Acf(SARIMA_autofit$residuals,lag.max=40)
+Pacf(SARIMA_autofit$residuals,lag.max=40)
+
+
+```
+
+
+## Automatically fitting ARIMA to deseasonal series
+
+Recall from M6 that the best fit for the non-seasonal time series is a ARIMA(2,1,2) with drift.
+
+```{r}
+
+ARIMA_autofit <- auto.arima(deseasonal_residential_price,max.D=0,max.P = 0,max.Q=0)
+print(ARIMA_autofit)
+
+par(mfrow=c(1,3))
+ts.plot(ARIMA_autofit$residuals)
+Acf(ARIMA_autofit$residuals,lag.max=40)
+Pacf(ARIMA_autofit$residuals,lag.max=40)
+
+
+```
+
+## Discussion: Which one to do? ARIMA or SARIMA?
+
