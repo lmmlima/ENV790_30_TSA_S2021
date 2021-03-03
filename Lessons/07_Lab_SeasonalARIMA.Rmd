@@ -1,0 +1,184 @@
+---
+title: "Lab 7: Seasonal ARIMA Models in R"
+date: "03/03/2021"
+output: pdf_document
+geometry: margin=2.54cm
+editor_options: 
+  chunk_output_type: console
+---
+
+## Objectives
+1. Answer questions on M7
+2. Fit SARIMA model in R
+
+## Setting R code chunk options
+
+First R code chunk is used for setting the options for all R code chunks. The choice echo=TRUE means both code and output will appear on report, include = FALSE neither code nor output is printed.
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(echo = TRUE,tidy.opts=list(width.cutoff=80), tidy=FALSE) 
+```
+
+## Loading packages and initializing
+
+Second R code chunk is for loading packages. By setting message = FALSE, the code will appear but not the output. 
+
+```{r package, message=FALSE}
+library(lubridate)
+library(ggplot2)
+library(forecast)  
+library(Kendall)
+library(tseries)
+library(outliers)
+library(tidyverse)
+```
+
+## Import Datasets
+
+Today we will work with data from the Climate Change Knowledge Portal from the World Bank Group. More specifically historical rainfall and temperature averages for Brazil. You will find two new data files on folder "/Data/Raw/". One with rainfall named "pr_1901_2016_BRA.csv" and another with temperature named "tas_1901_2016_BRA.csv". The data span the period from 1901 to 2016 in monthly steps. You can download the data [here][https://climateknowledgeportal.worldbank.org/download-data]
+
+Research question: Can you see any changes on the rainfall regime or average temperature over time?
+
+```{r}
+#Exercise 1: Look at the code I used to import and tidy the dataset for today. Make sure you unerstant the pipe structure. 
+
+Rainfall_BR <- read.csv("./Data/pr_1901_2016_BRA.csv", stringsAsFactors = TRUE)
+
+Temp_BR <- read.csv("./Data/tas_1901_2016_BRA.csv", stringsAsFactors = TRUE)
+
+#Within the pipe I am performing the follwoign steps:
+#a Rename the column with Rainfall to get rid of the dots.
+#b Note that on both data sets that is a column with the month name and average. Convert it to a Month column by separating the string, i.e., month in one column and the word "Average" on another. Hint: use the separate() function in the pipe.
+#c Now you should have a column with Month. Use the paste0() function to paste month and year together and create a date object.
+#d Select only the columns of interest: Date and rainfall
+
+Rainfall_BR_processed <-
+  Rainfall_BR %>% 
+  rename( Rainfall = Rainfall....MM.) %>% 
+  separate(Statistics,c("Null","Month","Null2")," ") %>% 
+  mutate( Date = my(paste0(Month,"-",Year))) %>% 
+  select(Date,Rainfall)
+
+Temp_BR_processed <-
+  Temp_BR %>% 
+  rename( Temperature_C = Temperature....Celsius.) %>% 
+  separate(Statistics,c("Null","Month","Null2")," ") %>% 
+  mutate( Date = my(paste0(Month,"-",Year))) %>% 
+  select(Date,Temperature_C)  
+
+
+#Join the temperature and rainfall into one tidy data frame with 3 columns: Date, Rainfall and Temperature.
+BR_complete <- inner_join(Rainfall_BR_processed,Temp_BR_processed)
+  
+#Now the dataset it ready to use!
+```
+
+
+## Initial plots
+
+```{r}
+
+#Exercise 2: Plot both series over time on separate plots. Add a trend line using geom_smooth(). Can you say something about the trend just by visualizing the data?
+
+
+```
+
+## Creating time series objects
+
+```{r}
+#Exercise 3: Create a time series objects for each series using ts(). Make sure you specify the starting point and frequency.
+
+
+
+```
+
+
+## Decomposing the time series
+
+So far we have used the `stats::decompose()` function to get the three components of the time series. Today I will introduce you to alternative functions.
+
+* `stats::stl()`: decompose a time series into seasonal, trend and irregular components using loess (locally weighted scatterplot smoothing). Need to specify `s.window = "period"`. That will default seasonal period to be equal frequency established in ts().
+
+Disadvantage: stl() does not allow for multiplicative component. But you only need when working with data that has exponential growth like the wind generation from A4.
+
+Advantage: stl() also model the seasonality whereas decompose() assumes that the seasonal component repeats from year to year.
+
+* `forecast::mstl()`: perform iterative calls to the stl() function for each seasonal window.
+
+Advantage: able to handle data that has multiple seasonal periods.
+
+```{r}
+
+# Exercise 4: Use the stl() function to decompose both series. 
+
+
+
+# Exercise 5: Use the times series object generated with the stl() to extract the 
+# components of each series and turn them into data frames.
+
+
+
+
+# Exercise 6: Visualize how the trend maps onto the data for both series
+
+
+
+
+
+
+```
+
+
+## Stationarity Tests
+
+From now on let's focus on the temperature series only.
+
+```{r}
+
+# Exercise 7: Apply the adf.test() or the ndiffs() or nsdiffs() to find the number of differencing needed to achieve stationarity. What's the order of d and D?
+
+
+
+
+```
+
+## Manually fitting seasonal ARIMA to original series
+
+```{r}
+
+# Exercise 8: Plot and ACF and PACF for the differenced series depending on d and D. Try to specify p, q, P and Q based on the plots.
+
+
+
+
+
+#Exercise 9: Manually fit and SARIMA model to the temperature series based on your answer to Exercise 9 and 10.
+
+```
+
+## Automatically fitting a seasonal ARIMA to original series
+
+```{r}
+#Exercise 10: Use the auto.arima() to fit a model to the temperature series. Compare the results with the model you specified in Exercise 11. Do they match? Which is a better fit based on AIC?
+
+
+
+
+
+  
+```
+
+## Adding explanantory variables to the model
+
+The ARIMA family has another variation called ARIMAX that allows you to add exogenous variables to you ARIMA model. The argument on the auto.arima that allows you to add an external regressor is the `xreg=`. For example, could rainfall explain some of the variability in temperature? 
+
+```{r}
+#Exercise 11: Plot a scatterplot Temperature ~ Rainfall. Can you see a relationship? Can you tell if it's linear? Run a regression using the `lm()` to support your answer.
+
+
+
+#Exercise 12: Repeat 12 but now add Rainfall as a regressor, i.e., xreg=Rainfall.
+
+
+```
+
