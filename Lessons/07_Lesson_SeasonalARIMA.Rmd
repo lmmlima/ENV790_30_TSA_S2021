@@ -45,14 +45,13 @@ nvar <- ncol(electricity_price) - 1
 nobs <- nrow(electricity_price)
 
 #Preparing the data - create date object and rename columns
-electricity_price_processed <-
-  electricity_price %>%
-  mutate( Month = my(Month) ) %>% 
-  rename( All.sectors = all.sectors.cents.per.kilowatthour ) %>% 
-  rename( Residential = residential.cents.per.kilowatthour ) %>% 
-  rename( Commercial = commercial.cents.per.kilowatthour ) %>% 
-  rename( Industrial = industrial.cents.per.kilowatthour ) %>% 
-  arrange( Month )
+electricity_price_processed <- electricity_price %>%
+  mutate(Month = my(Month)) %>% 
+  rename(All.sectors = all.sectors.cents.per.kilowatthour) %>% 
+  rename(Residential = residential.cents.per.kilowatthour) %>% 
+  rename(Commercial = commercial.cents.per.kilowatthour) %>% 
+  rename(Industrial = industrial.cents.per.kilowatthour) %>% 
+  arrange(Month)
 
 head(electricity_price_processed)
 summary(electricity_price_processed)
