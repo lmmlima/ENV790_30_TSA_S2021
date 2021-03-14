@@ -1,0 +1,229 @@
+---
+title: "M8: Forecasting in R: Simple Averaging Models & ARIMA"
+author: "Luana Lima"
+date: "03/12/2021"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Setting R code chunk options
+
+First R code chunk is used for setting the options for all R code chunks. The choice echo=TRUE means both code and output will appear on report, include = FALSE neither code nor output is printed.
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(echo = TRUE,tidy.opts=list(width.cutoff=80), tidy=FALSE) 
+```
+
+## Loading packages and initializing
+
+Second R code chunk is for loading packages. By setting message = FALSE, the code will appear but not the output. 
+
+```{r package, message=FALSE}
+library(lubridate)
+library(ggplot2)
+library(forecast)  
+library(Kendall)
+library(tseries)
+library(outliers)
+library(tidyverse)
+
+#install.packages("smooth")
+library(smooth)
+
+```
+
+## Importing data
+
+For this module we will continue to work with the electricity retail price in US dataset from the U.S. Energy Information Administration. You may download  [here][https://www.eia.gov/electricity/data/browser/#/topic/7?agg=2,0,1&geo=g&freq=M%2013:41:41%20GMT-0500%20(EST)]. But this week we will work with the all.sectors column instead of residential price.
+
+```{r}
+
+#Importing time series data from text file#
+electricity_price <- read.csv(file="./Data/Average_retail_price_of_electricity_United_States_monthly.csv",header=TRUE,skip=4)
+
+#Inspect data
+head(electricity_price)
+nvar <- ncol(electricity_price) - 1
+nobs <- nrow(electricity_price)
+
+#Preparing the data - create date object and rename columns
+electricity_price_processed <-
+  electricity_price %>%
+  mutate( Month = my(Month) ) %>% 
+  rename( All.sectors = all.sectors.cents.per.kilowatthour ) %>% 
+  rename( Residential = residential.cents.per.kilowatthour ) %>% 
+  rename( Commercial = commercial.cents.per.kilowatthour ) %>% 
+  rename( Industrial = industrial.cents.per.kilowatthour ) %>% 
+  arrange( Month )
+
+head(electricity_price_processed)
+summary(electricity_price_processed)
+
+#No NAs so we don't need to worry about missing values
+
+```
+
+## Transforming data into time series object
+
+Many of the functions we will use require a time series object. You can transform your data in a time series using the function *ts()*. 
+
+```{r}
+ts_electricity_price <- ts(electricity_price_processed[,2:(nvar+1)],
+                           start=c(year(electricity_price_processed$Month[1]),month(electricity_price_processed$Month[1])),
+                           frequency=12) 
+#note that we are only transforming columns with electricity price, not the date columns  
+head(ts_electricity_price,15)
+tail(ts_electricity_price,15)
+
+```
+
+## Initial Plots
+
+```{r}
+
+TS_Plot <- 
+  ggplot(electricity_price_processed, aes(x=Month, y=All.sectors)) +
+      geom_line()
+plot(TS_Plot)
+
+#ACF and PACF plots
+par(mfrow=c(1,2))
+ACF_Plot <- Acf(electricity_price_processed$All.sectors, lag = 40, plot = TRUE)
+PACF_Plot <- Pacf(electricity_price_processed$All.sectors, lag = 40)
+par(mfrow=c(1,1))
+```
+
+
+## Decomposing the time series 
+
+The plots from the previous section show the data has a seasonal component. Since we are working with non-seasonal ARIMA, we need to decompose the series and eliminate the seasonality.
+
+```{r}
+#Using R decompose function
+decompose_allsectors_price <- decompose(ts_electricity_price[,"All.sectors"],"additive")
+plot(decompose_allsectors_price)
+
+#The ACF plot show a slow decay which is a sign of non-stationarity.
+
+#Creating non-seasonal residential price time series because some models can't handle seasonality
+deseasonal_allsectors_price <- seasadj(decompose_allsectors_price)  
+
+
+```
+
+
+## Forecasting with Naive methods
+
+We will go over three naive methods.
+(a) Forecast using the arithmetic mean with function meanf() from package `forecast`.
+(b) Forecast using the naive method with function naive() from package `forecast`.
+(c) Forecast using the seasonal naive method with function snaive() from package `forecast`. You need to specify frequency when defining the ts object to be able to use this function.
+
+These three function take a few main arguments:
+
+**y** ts object containing data needed to be forecasted
+**h** forecasting horizon, i.e., how many steps ahead do you want to forecast
+**level** Confidence level for prediction intervals
+
+
+
+```{r}
+#Model 1: Arithmetic mean on original data
+MEAN_seas <- meanf(y = ts_electricity_price[,"All.sectors"], h = 36)
+plot(MEAN_seas)
+
+#Model 2: Arithmetic mean on deseas data
+MEAN_deseas <- meanf(deseasonal_allsectors_price, h=36)
+plot(MEAN_deseas)
+
+#Model 3: Seasonal naive on original data
+SNAIVE_seas <- snaive(ts_electricity_price[,"All.sectors"], h=36)
+plot(SNAIVE_seas)
+
+#Model 4: Naive on deseas data
+NAIVE_deseas <- naive(deseasonal_allsectors_price, h=36)
+plot(NAIVE_deseas)
+
+```
+
+
+
+## Forecasting with Simple Averaging Models
+
+The simple averaging techniques we will explore are the moving average and the exponential smoothing. The simple moving average can be obtained with function sma() from package `smooth`. The main arguments function sma() will take are:
+
+**y** ts object containing data needed to be forecasted
+**order** order of simple moving average. If you don't specify, R will find the best order for you
+**h** forecasting horizon, i.e., how many steps ahead do you want to forecast
+**holdout** If TRUE, the last **h** observations are taken from the end of the data. One reason to holdout some data is to check model performance. We will talk about that on M9.
+**silent** if FALSE, no output will be generated
+**level** Confidence level for prediction intervals
+
+
+The simple exponential smoothing can be obtained with the ses() function also from package `forecast`. The main arguments function ses() will take are:
+
+**y** ts object containing data needed to be forecasted
+**alpha** the smoothing constant. If you don't specify, R will find the best alpha for you. 
+**h** forecasting horizon, i.e., how many steps ahead do you want to forecast
+**holdout** If TRUE, the last **h** observations are taken from the end of the data. One reason to holdout some data is to check model performance. We will talk about that on M9.
+**silent** if FALSE, no output will be generated
+**level** Confidence level for prediction intervals
+
+
+We will try these models on the original dataset and the deaseason electricity price.
+
+```{r}
+# Model 5: Simple moving average on deseasonal data
+SMA_deseas_fit <- sma(y = deseasonal_allsectors_price, h = 36, holdout = FALSE, silent = FALSE) #order=2
+summary(SMA_deseas_fit)
+
+# Model 6: Simple moving average on original data
+SMA_seas_fit <- sma( y = ts_electricity_price[,"All.sectors"], h = 36, holdout = FALSE, silent = FALSE) #order=2
+summary(SMA_seas_fit)
+
+# Model 7:  Simple exponential smoothing on deseasonal data
+SES_deseas_fit=ses( y = deseasonal_allsectors_price, h = 36, holdout = FALSE, silent = FALSE)  #alpha is NULL
+summary(SES_deseas_fit)
+plot(SES_deseas_fit)
+#Best alpha = 0.923 
+plot(deseasonal_allsectors_price,col="black")
+lines(SES_deseas_fit$fitted, col="blue")
+
+# Model 8:  Simple exponential smoothing on original data
+SES_seas_fit <- ses(y = ts_electricity_price[,"All.sectors"], h = 36, holdout = FALSE, silent = FALSE)
+summary(SES_seas_fit)
+plot(SES_seas_fit)
+#Best alpha = 0.9999 
+
+plot(ts_electricity_price[,"All.sectors"],col="black")
+lines(SES_seas_fit$fitted, col="blue")
+
+```
+
+
+## Forecasting with ARIMA
+
+When forecasting with ARIMA models, first you will need to fit the model with the auto.arima() function we studied on M6 and M7. Then you will need to use the forecast() function from package `forecast`. forecast() is a generic function for forecasting from time series or time series models. It takes two main arguments:
+
+**object** 	a time series or time series model for which forecasts are required;
+**h** forecasting horizon, i.e., how many steps ahead do you want to forecast.
+
+```{r}
+
+# Model 9:  SARIMA on original data
+SARIMA_autofit <- auto.arima(ts_electricity_price[,"All.sectors"])
+print(SARIMA_autofit)
+
+SARIMA_forecast <- forecast(object = SARIMA_autofit, h = 36)
+plot(SARIMA_forecast)
+
+# Model 10:  ARIMA on deseasonal data
+ARIMA_autofit <- auto.arima(deseasonal_allsectors_price, max.D = 0, max.P = 0, max.Q = 0)
+print(ARIMA_autofit)
+
+ARIMA_forecast <- forecast(object = ARIMA_autofit, h = 36)
+plot(ARIMA_forecast)
+```
+
+
