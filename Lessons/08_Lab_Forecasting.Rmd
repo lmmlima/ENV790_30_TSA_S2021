@@ -1,0 +1,133 @@
+---
+title: "Lab 8: Forecasting in R with Simple Averaging & ARIMA Models"
+author: "Luana Lima"
+date: "03/12/2021"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Objectives
+1. Answer questions on M7
+2. Go over key takeways from A5
+3. Finalize the script from Lab 7 and talk about ARIMAX
+4. Forecast temperature data in R
+
+## Setting R code chunk options
+
+First R code chunk is used for setting the options for all R code chunks. The choice echo=TRUE means both code and output will appear on report, include = FALSE neither code nor output is printed.
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(echo = TRUE,tidy.opts=list(width.cutoff=80), tidy=FALSE) 
+```
+
+## Loading packages and initializing
+
+Second R code chunk is for loading packages. By setting message = FALSE, the code will appear but not the output. 
+
+```{r package, message=FALSE}
+library(lubridate)
+library(ggplot2)
+library(forecast)  
+library(Kendall)
+library(tseries)
+library(outliers)
+library(tidyverse)
+
+#install.packages("smooth")
+library(smooth)
+
+```
+
+## Importing data
+
+Today we continue working with data from the Climate Change Knowledge Portal from the World Bank Group. More specifically historical rainfall and temperature averages for Brazil. You will find two new data files on folder "/Data/Raw/". One with rainfall named "pr_1901_2016_BRA.csv" and another with temperature named "tas_1901_2016_BRA.csv". The data span the period from 1901 to 2016 in monthly steps. You can download the data [here][https://climateknowledgeportal.worldbank.org/download-data]
+
+Research question: Can you see any changes on the rainfall regime or average temperature over time?
+
+```{r}
+# Import both datasets using the read.csv function.
+Rainfall_BR <- read.csv("./Data/pr_1901_2016_BRA.csv", stringsAsFactors = TRUE)
+
+Temp_BR <- read.csv("./Data/tas_1901_2016_BRA.csv", stringsAsFactors = TRUE)
+
+# Tidy the rainfall data sets.
+#a Rename the column with Rainfall to get rid of the dots.
+#b Note that on both data sets that is a column with the month name and average. Convert it to a Month column by separating the string, i.e., month in one column and the word "Average" on another. Hint: use the separate() function in the pipe.
+#c Now you should have a column with Month. Use the paste0() function to paste month and year together and create a date object.
+#d Select only the columns of interest: Date and rainfall
+
+Rainfall_BR_processed <-
+  Rainfall_BR %>% 
+  rename( Rainfall = Rainfall....MM.) %>% 
+  separate(Statistics,c("Null","Month","Null2")," ") %>% 
+  mutate( Date = my(paste0(Month,"-",Year))) %>% 
+  select(Date,Rainfall)
+
+#Repeat for the temperature dataset.
+Temp_BR_processed <-
+  Temp_BR %>% 
+  rename( Temperature_C = Temperature....Celsius.) %>% 
+  separate(Statistics,c("Null","Month","Null2")," ") %>% 
+  mutate( Date = my(paste0(Month,"-",Year))) %>% 
+  select(Date,Temperature_C)  
+
+
+#Join the temperature and rainfall into one tidy data frame with 3 columns: Date, Rainfall and Temperature.
+BR_complete <- inner_join(Rainfall_BR_processed,Temp_BR_processed)
+  
+           
+```
+
+## Transforming data into time series object
+
+```{r}
+f_month <- month(first(BR_complete$Date))
+f_year <- year(first(BR_complete$Date))
+
+BR_Rain_ts <- ts(BR_complete$Rainfall,frequency = 12)
+BR_Temp_ts <- ts(BR_complete$Temperature_C,frequency = 12)
+
+```
+
+## Decomposing the time series 
+
+```{r}
+BR_Rain_Decomposed <- stl(BR_Rain_ts, s.window = "periodic")
+plot(BR_Rain_Decomposed)
+
+BR_Temp_Decomposed <- stl(BR_Temp_ts, s.window = "periodic")
+plot(BR_Temp_Decomposed)
+
+BR_Temp_ts_deseas <- seasadj(BR_Temp_Decomposed)
+
+```
+
+
+## Forecasting non-seasonal Temperature 
+
+Ex1: Which models could be used to forecast the non-seasonal temperature series?
+
+
+```{r}
+
+
+```
+
+
+
+## Forecasting seasonal(original) Temperature 
+
+Ex 2: Which models could be used to forecast the seasonal temperature series?
+
+
+```{r}
+
+
+
+
+```
+
+
+
+
