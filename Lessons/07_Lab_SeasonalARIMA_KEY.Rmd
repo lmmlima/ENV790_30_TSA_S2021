@@ -40,13 +40,12 @@ Today we will work with data from the Climate Change Knowledge Portal from the W
 Research question: Can you see any changes on the rainfall regime or average temperature over time?
 
 ```{r}
-#Exercise 1: Look at the code I used to import and tidy the dataset for today. Make sure you understand the pipe structure. 
-
+#Exercise 1: Import both datasets using the read.csv function.
 Rainfall_BR <- read.csv("./Data/pr_1901_2016_BRA.csv", stringsAsFactors = TRUE)
 
 Temp_BR <- read.csv("./Data/tas_1901_2016_BRA.csv", stringsAsFactors = TRUE)
 
-#Within the pipe I am performing the following steps:
+#Exercise 2: Tidy the rainfall data sets.
 #a Rename the column with Rainfall to get rid of the dots.
 #b Note that on both data sets that is a column with the month name and average. Convert it to a Month column by separating the string, i.e., month in one column and the word "Average" on another. Hint: use the separate() function in the pipe.
 #c Now you should have a column with Month. Use the paste0() function to paste month and year together and create a date object.
@@ -59,6 +58,7 @@ Rainfall_BR_processed <-
   mutate( Date = my(paste0(Month,"-",Year))) %>% 
   select(Date,Rainfall)
 
+#Exercise 3: Repeat exercise 2 to the temperature dataset.
 Temp_BR_processed <-
   Temp_BR %>% 
   rename( Temperature_C = Temperature....Celsius.) %>% 
@@ -67,10 +67,10 @@ Temp_BR_processed <-
   select(Date,Temperature_C)  
 
 
-#Join the temperature and rainfall into one tidy data frame with 3 columns: Date, Rainfall and Temperature.
+#Exercise 4: Join the temperature and rainfall into one tidy data frame with 3 columns: Date, Rainfall and Temperature.
 BR_complete <- inner_join(Rainfall_BR_processed,Temp_BR_processed)
   
-#Now the dataset it ready to use!
+           
 ```
 
 
@@ -78,17 +78,27 @@ BR_complete <- inner_join(Rainfall_BR_processed,Temp_BR_processed)
 
 ```{r}
 
-#Exercise 2: Plot both series over time on separate plots. Add a trend line using geom_smooth(). Can you say something about the trend just by visualizing the data?
+#Exercise 6: Plot both series over time on separate plots. Add a trend line using geom_smooth(). Can you say something about the trend just by visualizing the data?
+ggplot(BR_complete, aes( x = Date, y = Rainfall)) +
+  geom_line() +
+  geom_smooth()
 
+ggplot(BR_complete, aes( x = Date, y = Temperature_C)) +
+  geom_line() +
+  geom_smooth()
 
 ```
 
 ## Creating time series objects
 
 ```{r}
-#Exercise 3: Create a time series objects for each series using ts(). Make sure you specify the starting point and frequency.
+#Exercise 7: Create a time series objects for each series using ts(). Make sure you specify the starting point and frequency.
 
+f_month <- month(first(BR_complete$Date))
+f_year <- year(first(BR_complete$Date))
 
+BR_Rain_ts <- ts(BR_complete$Rainfall,frequency = 12)
+BR_Temp_ts <- ts(BR_complete$Temperature_C,frequency = 12)
 
 ```
 
@@ -109,21 +119,45 @@ Advantage: able to handle data that has multiple seasonal periods.
 
 ```{r}
 
-# Exercise 4: Use the stl() function to decompose both series. 
+# Exercise 8: Use the stl() function to decompose both series. 
+# Visualize the decomposed series using plot(). What components can you identify?
 
+BR_Rain_Decomposed <- stl(BR_Rain_ts, s.window = "periodic")
+plot(BR_Rain_Decomposed)
 
+BR_Temp_Decomposed <- stl(BR_Temp_ts, s.window = "periodic")
+plot(BR_Temp_Decomposed)
 
-# Exercise 5: Use the times series object generated with the stl() to extract the 
+# Exercise 9: Use the times series object generated with the stl() to extract the 
 # components of each series and turn them into data frames.
 
+BR_Rain_Components <- as.data.frame(BR_Rain_Decomposed$time.series[,1:3])
+BR_Temp_Components <- as.data.frame(BR_Temp_Decomposed$time.series[,1:3])
+
+BR_Rain_Components <- mutate(BR_Rain_Components,
+        Observed = BRA_complete$Rainfall,     
+        Date = BRA_complete$Date)
+
+BR_Temp_Components <- mutate(BR_Temp_Components,
+        Observed = BRA_complete$Temperature_C,     
+        Date = BRA_complete$Date)
 
 
+# Exercise 10: Visualize how the trend maps onto the data for both series
+ggplot(BR_Rain_Components) +
+  geom_line(aes(y = Observed, x = Date),  size = 0.25) +
+  geom_line(aes(y = trend, x = Date), color = "#c13d75ff") +
+  #geom_line(aes(y = seasonal, x = Date), color = "blue") +
+  #geom_hline(yintercept = 0, lty = 2) +
+  ylab("Rainfall")
 
-# Exercise 6: Visualize how the trend maps onto the data for both series
 
-
-
-
+ggplot(BR_Temp_Components) +
+  geom_line(aes(y = Observed, x = Date),  size = 0.25) +
+  geom_line(aes(y = trend, x = Date), color = "#c13d75ff") +
+  #geom_line(aes(y = seasonal, x = Date), color = "blue") +
+  #geom_hline(yintercept = 0, lty = 2) +
+  ylab("Temperature")
 
 
 ```
@@ -135,7 +169,7 @@ From now on let's focus on the temperature series only.
 
 ```{r}
 
-# Exercise 7: Apply the adf.test() or the ndiffs() or nsdiffs() to find the number of differencing needed to achieve stationarity. What's the order of d and D?
+# Exercise 9: Apply the adf.test() or the ndiffs() or nsdiffs() to find the number of differencing needed to achieve stationarity. What's the order of d and D?
 
 
 
@@ -146,39 +180,43 @@ From now on let's focus on the temperature series only.
 
 ```{r}
 
-# Exercise 8: Plot and ACF and PACF for the differenced series depending on d and D. Try to specify p, q, P and Q based on the plots.
+# Exercise 10: Plot and ACF and PACF for the differenced series depending on d and D. Try to specify p, q, P and Q based on the plots.
 
 
 
 
 
-#Exercise 9: Manually fit and SARIMA model to the temperature series based on your answer to Exercise 9 and 10.
+#Exercise 11: Manually fit and SARIMA model to the temperature series based on your answer to Exercise 9 and 10.
 
 ```
 
 ## Automatically fitting a seasonal ARIMA to original series
 
 ```{r}
-#Exercise 10: Use the auto.arima() to fit a model to the temperature series. Compare the results with the model you specified in Exercise 11. Do they match? Which is a better fit based on AIC?
+#Exercise 12: Use the auto.arima() to fit a model to the temperature series. Compare the results with the model you specified in Exercise 11. Do they match? Which is a better fit based on AIC?
 
-
-
-
+SARIMA_Temp <- auto.arima(BR_Temp_ts)
+summary(SARIMA_Temp)
 
   
 ```
 
 ## Adding explanantory variables to the model
 
-The ARIMA family has another variation called ARIMAX that allows you to add exogenous variables to you ARIMA model. The argument on the auto.arima() that allows you to add an external regressor is the `xreg=`. For example, could rainfall explain some of the variability in temperature? 
+The ARIMA family has another variation called ARIMAX that allows you to add exogenous variables to you ARIMA model. The argument on the auto.arima that allows you to add an external regressor is the `xreg=`. For example, could rainfall explain some of the variability in temperature? 
 
 ```{r}
-#Exercise 11: Plot a scatterplot Temperature ~ Rainfall. Can you see a relationship? Can you tell if it's linear? Run a regression using the `lm()` to support your answer.
+#Exercise 13: Plot a scatterplot Temperature ~ Rainfall. Can you see a relationship? Can you tell if it's linear? Run a regression using the `lm()` to support your answer.
+ggplot(BR_complete,aes(x=Rainfall, y=Temperature_C)) +
+  geom_point() +
+  geom_smooth(method="lm")
 
 
+#Exercise 14: Repeat 12 but now add Rainfall as a regressor, i.e., xreg=Rainfall.
 
-#Exercise 12: Repeat 12 but now add Rainfall as a regressor, i.e., xreg=Rainfall.
-
+SARIMA_Temp_Exo <- auto.arima(BR_Temp_ts,xreg=BR_Rain_ts)
+summary(SARIMA_Temp_Exo)
+#compare AIC
 
 ```
 
