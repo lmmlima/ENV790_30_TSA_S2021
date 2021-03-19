@@ -26,13 +26,13 @@ When you have completed the assignment, **Knit** the text and code into a single
 
 ## Importing and processing the data set
 
-Consider the data from the file "NaturalGasConsumption.csv". The data corresponds to the monthly Natural Gas Consumption from January 2001 to November 2017 and is provided by the US Energy Information and Administration.
+Consider the data from the file "Net_generation_United_States_all_sectors_monthly.csv". The data corresponds to the monthly net generation from January 2001 to December 2020 by source and is provided by the US Energy Information and Administration. **You will work with the natural gas column only**.
 
 Packages needed for this assignment: "forecast","tseries". Do not forget to load them before running your script, since they are NOT default packages.\\
 
 ### Q1
 
-Import the csv file and create a time series object for natural gas consumption. Make you sure you specify the **start=** and **frequency=** arguments. Plot the time series over time, ACF and PACF.
+Import the csv file and create a time series object for natural gas. Make you sure you specify the **start=** and **frequency=** arguments. Plot the time series over time, ACF and PACF.
 
 ```{r}
 
@@ -40,7 +40,7 @@ Import the csv file and create a time series object for natural gas consumption.
 
 ### Q2
 
-Using the $decompose()$ or $stl()$ and the $seasadj()$ functions create a series without the seasonal component, i.e., a deseasonalized natural gas consumption series. Plot the deseasonalized series over time and corresponding ACF and PACF. Compare with the plots obtained in Q1.
+Using the $decompose()$ or $stl()$ and the $seasadj()$ functions create a series without the seasonal component, i.e., a deseasonalized natural gas series. Plot the deseasonalized series over time and corresponding ACF and PACF. Compare with the plots obtained in Q1.
 
 ```{r}
 
@@ -89,7 +89,7 @@ Repeat Q4-Q6 for the original series (the complete series that has the seasonal 
 
 ### Q8
 
-Compare the residual series for Q7 and Q6. Can you tell which ARIMA model is better representing the Natural Gas Consumption Series? Is that a fair comparison? Explain your response.
+Compare the residual series for Q7 and Q6. Can you tell which ARIMA model is better representing the Natural Gas Series? Is that a fair comparison? Explain your response.
 
 ```{r}
 
