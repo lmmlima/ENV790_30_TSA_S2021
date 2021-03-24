@@ -1,7 +1,7 @@
 ---
 title: "ENV 790.30 - Time Series Analysis for Energy Data | Spring 2021"
 subtitle: "Assignment 6 - Due date 03/26/21"
-author: "Student Name"
+author: "Marie McNamara" 
 output: pdf_document
 geometry: margin=2.54cm
 header-includes:
@@ -21,7 +21,14 @@ When you have completed the assignment, **Knit** the text and code into a single
 
 ```{r}
 #Load/install required package here
-
+library(lubridate)
+library(ggplot2)
+library(forecast)  
+library(Kendall)
+library(tseries)
+library(outliers)
+library(tidyverse)
+library(sarima)
 ```
 
 ## Importing and processing the data set
@@ -35,15 +42,41 @@ Packages needed for this assignment: "forecast","tseries". Do not forget to load
 Import the csv file and create a time series object for natural gas. Make you sure you specify the **start=** and **frequency=** arguments. Plot the time series over time, ACF and PACF.
 
 ```{r}
+natural_gas_new <- read.csv(file="../Data/Net_generation_United_States_all_sectors_monthly.csv" ,header=TRUE,skip = 4) 
+
+first <- 
+  natural_gas_new %>%
+  select("Month","natural.gas.thousand.megawatthours") %>% 
+  mutate( Month = my(Month)) %>% 
+  rename( natural_gas = natural.gas.thousand.megawatthours)  %>% 
+  arrange (Month)
+
+
+nvar= ncol(first) - 1
+ts_nat_price <- ts(first[,2:(nvar+1)],
+                           start=c(year(first$Month[1]),month(first$Month[1])),
+                           frequency=12) 
+
+acf1 = Acf(ts_nat_price, lag.max = 40, plot = TRUE) 
+pacf1 = Pacf(ts_nat_price, lag.max = 40, plot = TRUE) 
 
 ```
 
 ### Q2
 
-Using the $decompose()$ or $stl()$ and the $seasadj()$ functions create a series without the seasonal component, i.e., a deseasonalized natural gas series. Plot the deseasonalized series over time and corresponding ACF and PACF. Compare with the plots obtained in Q1.
+Using the $decompose()$ or $stl()$ and the $seasadj()$ functions create a series without the seasonal component, i.e., a deseasonalized natural gas series. Plot the depersonalized series over time and corresponding ACF and PACF. Compare with the plots obtained in Q1.
 
+
+Based on the PACF and ACF plots there is a clear seasonal component. There also was an observed decreasing mean trend. The desasoned plot confirms that there is a decreasing seasonal component, as well as sesonality. 
+
+This can be seen by the decreasing mean over time, and have a high correlation component between lags.
 ```{r}
 
+natural_gas_deseas <- stl(ts_first[,2], s.window = "period") 
+plot(natural_gas_deseas)
+
+decompose_natural_price <- decompose(ts_first[,"natural_gas"],"additive")
+plot(decompose_natural_price)
 ```
 
 ## Modeling the seasonally adjusted or deseasonalized series
@@ -52,15 +85,39 @@ Using the $decompose()$ or $stl()$ and the $seasadj()$ functions create a series
 
 Run the ADF test and Mann Kendall test on the deseasonalized data from Q2. Report and explain the results.
 
+The seasonal Mann kendall tests for P value was < 2.22e-16 which is less than 0.05. I failed to reject the null, that natural gas data is stationary, thus the data is not stationary and has a stocastic trend  
+
+For the ADF test p=0.01 greater than 0.05. I rejected the null 
 ```{r}
 
+i=2 
+SMKtest <- SeasonalMannKendall(ts_first[,i])
+print(summary(SMKtest))
+
+i=2
+print(adf.test(ts_first[,i],alternative = "stationary"))
 ```
 
 ### Q4
 
 Using the plots from Q2 and test results from Q3 identify the ARIMA model parameters $p,d$ and $q$. Note that in this case because you removed the seasonal component prior to identifying the model you don't need to worry about seasonal component. Clearly state your criteria and any additional function in R you might use. DO NOT use the $auto.arima()$ function. You will be evaluated on ability to can read the plots and interpret the test results.
 
+-Ask about removing seasonal component? 
+
+
+After analyzing the ACF and PACF plots I notice that there is slow decay in the ACF Plot. There is also a PACF cut off at lag one which leds me to conclude that this is a AR process order 1. 
+
+The series needs differencing as the Mankendal test above showed a stocastic trend. after running the n_diff funciton think there is only one differncing needed. the ACF plot determines q 
+
+p=1
+d=1
+q=0
+
 ```{r}
+deseasonal_natural<- seasadj(decompose_natural_price)
+n_diff <- ndiffs(deseasonal_natural)
+cat("Number of differencing needed:", n_diff)
+
 
 ```
 
@@ -69,6 +126,10 @@ Using the plots from Q2 and test results from Q3 identify the ARIMA model parame
 Use $Arima()$ from package "forecast" to fit an ARIMA model to your series considering the order estimated in Q4. Should you allow for constants in the model, i.e., $include.mean = TRUE$ or $include.drift=TRUE$. **Print the coefficients** in your report. Hint: use the $cat()$ function to print.
 
 ```{r}
+
+SARIMA_manual <- Arima(ts_first[,2],order=c(1,1,0), include.mean = TRUE,include.drift=TRUE)
+print(SARIMA_manual)
+cat("Coefficients", var.coef) 
 
 ```
 
