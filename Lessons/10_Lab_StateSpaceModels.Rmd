@@ -73,8 +73,8 @@ autoplot(ts_all_fuel) +
 
 #ACF and PACF plots
 par(mfrow=c(1,2))
-ACF_Plot <- Acf(electricity_price_processed$All.sectors, lag = 40, plot = TRUE,main="")
-PACF_Plot <- Pacf(electricity_price_processed$All.sectors, lag = 40, plot = TRUE,main="")
+ACF_Plot <- Acf(ts_all_fuel, lag = 40, plot = TRUE,main="")
+PACF_Plot <- Pacf(ts_all_fuel, lag = 40, plot = TRUE,main="")
 par(mfrow=c(1,1))
 
 ```
