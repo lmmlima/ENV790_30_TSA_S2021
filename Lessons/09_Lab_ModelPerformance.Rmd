@@ -35,10 +35,11 @@ library(forecast)
 library(tseries)
 #library(outliers)
 library(tidyverse)
+install.packages("smooth")
 library(smooth)
 
 #New package for M9 to assist with tables
-#install.packages("kableExtra")
+install.packages("kableExtra")
 library(kableExtra)
 
 ```
@@ -61,18 +62,18 @@ forecast=c(110,121,112,120,109)
 #Exercise 1: compute MAD, MSE and MAPE
 n=length(actual)
 
-ME = 
-MSE = 
-RMSE = 
-MAE = 
-MPE = 
-MAPE = 
+ME = sum(actual - forecast)/n
+MSE = sum((actual - forecast))^2/n
+RMSE = sqrt(MSE)
+MAE = sum(abs(actual - forecast))/n
+MPE = sum((actual - forecast)/actual)/n*100
+MAPE = sum(abs(actual - forecast))/actual/n*100
 
 
 
 #Exercise 2: Compute the forecast accuracy metrics you calculated in Ex 1 with the results from accuracy() function.
 
-
+accuracy(forecast, actual)
 ```
 
 ## Importing data
@@ -83,9 +84,9 @@ Research question: Can you forecast temperature for the next two months?
 
 ```{r}
 # Import both datasets using the read.csv function.
-Rainfall_BR <- read.csv("./Data/pr_1901_2016_BRA.csv", stringsAsFactors = TRUE)
+Rainfall_BR <- read.csv("../Data/pr_1901_2016_BRA.csv", stringsAsFactors = TRUE)
 
-Temp_BR <- read.csv("./Data/tas_1901_2016_BRA.csv", stringsAsFactors = TRUE)
+Temp_BR <- read.csv("../Data/tas_1901_2016_BRA.csv", stringsAsFactors = TRUE)
 
 # Tidy the rainfall data sets.
 #a Rename the column with Rainfall to get rid of the dots.
