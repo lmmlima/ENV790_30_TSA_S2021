@@ -19,7 +19,16 @@ When you have completed the assignment, **Knit** the text and code into a single
 
 ## Set up
 
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(echo = TRUE,tidy.opts=list(width.cutoff=80), tidy=FALSE)
+```
+
+
 ```{r}
+
+knitr::opts_chunk$set(echo = TRUE,tidy.opts=list(width.cutoff=80), tidy=FALSE) 
+
 #Load/install required package here
 library(lubridate)
 library(ggplot2)
@@ -51,14 +60,14 @@ first <-
   rename( natural_gas = natural.gas.thousand.megawatthours)  %>% 
   arrange (Month)
 
-
 nvar= ncol(first) - 1
-ts_nat_price <- ts(first[,2:(nvar+1)],
+ts_first <- ts(first[,2:(nvar+1)],
                            start=c(year(first$Month[1]),month(first$Month[1])),
                            frequency=12) 
 
-acf1 = Acf(ts_nat_price, lag.max = 40, plot = TRUE) 
-pacf1 = Pacf(ts_nat_price, lag.max = 40, plot = TRUE) 
+par(mfrow=c(1,2))
+acf1 = Acf(ts_first, lag.max = 40, plot = TRUE) 
+pacf1 = Pacf(ts_first, lag.max = 40, plot = TRUE) 
 
 ```
 
@@ -67,16 +76,30 @@ pacf1 = Pacf(ts_nat_price, lag.max = 40, plot = TRUE)
 Using the $decompose()$ or $stl()$ and the $seasadj()$ functions create a series without the seasonal component, i.e., a deseasonalized natural gas series. Plot the depersonalized series over time and corresponding ACF and PACF. Compare with the plots obtained in Q1.
 
 
-Based on the PACF and ACF plots there is a clear seasonal component. There also was an observed decreasing mean trend. The desasoned plot confirms that there is a decreasing seasonal component, as well as sesonality. 
+Based on the PACF and ACF plots there is a clear seasonal component. There was also an observed decreasing mean trend in the ACF plot (This can be seen by the decreasing mean over time, and the high correlation component between lags)
 
-This can be seen by the decreasing mean over time, and have a high correlation component between lags.
+The seasoned plot confirms that there is a seasonal component, as well as a decreasing mean trend.
+
+After plotting the desonalized series it can be seen that there is no longer observed seasonality in ACF but there is still some decrease mean trend. 
+
+
 ```{r}
+n_diff2 <- ndiffs(ts_first)
+cat("Number of differencing needed:", n_diff2)
 
-natural_gas_deseas <- stl(ts_first[,2], s.window = "period") 
-plot(natural_gas_deseas)
+decompose_natural_gas <- decompose(ts_first,"additive")
+plot(decompose_natural_gas)
 
-decompose_natural_price <- decompose(ts_first[,"natural_gas"],"additive")
-plot(decompose_natural_price)
+deseasonal_natural <- seasadj(decompose_natural_gas) 
+
+
+#Lets difference the series once at lag 1 to remove the trend.
+deseasonal_natural_diff <- diff(deseasonal_natural,differences=1,lag=2)
+
+par(mfrow=c(1,2))
+acf1 = Acf(deseasonal_natural, lag.max = 40, plot = TRUE) 
+pacf1 = Pacf(deseasonal_natural, lag.max = 40, plot = TRUE) 
+
 ```
 
 ## Modeling the seasonally adjusted or deseasonalized series
@@ -85,41 +108,33 @@ plot(decompose_natural_price)
 
 Run the ADF test and Mann Kendall test on the deseasonalized data from Q2. Report and explain the results.
 
-The seasonal Mann kendall tests for P value was < 2.22e-16 which is less than 0.05. I failed to reject the null, that natural gas data is stationary, thus the data is not stationary and has a stocastic trend  
+The seasonal Mann kendall tests for P value was  2.22e-16,  reject the null, that natural gas data is stationary, thus the data is not stationary.
 
-For the ADF test p=0.01 greater than 0.05. I rejected the null 
+For the ADF test p=0.01 which is less than 0.05  reject the null which is that the series contains a unit root.
+
+Thus this data is not stationary and follows a trend but it does not have a unit root. The series should be differenced. 
 ```{r}
 
 i=2 
-SMKtest <- SeasonalMannKendall(ts_first[,i])
+SMKtest <- SeasonalMannKendall(deseasonal_natural)
 print(summary(SMKtest))
 
 i=2
-print(adf.test(ts_first[,i],alternative = "stationary"))
+print(adf.test(deseasonal_natural,alternative = "stationary"))
 ```
 
 ### Q4
 
 Using the plots from Q2 and test results from Q3 identify the ARIMA model parameters $p,d$ and $q$. Note that in this case because you removed the seasonal component prior to identifying the model you don't need to worry about seasonal component. Clearly state your criteria and any additional function in R you might use. DO NOT use the $auto.arima()$ function. You will be evaluated on ability to can read the plots and interpret the test results.
 
--Ask about removing seasonal component? 
 
+After analyzing the ACF and PACF plots I notice that there is slow decay in the ACF Plot. There is also a PACF cut off at lag two which leads me to conclude that this is a AR process order 2. (With this said i believe this is an ARMA function and there appears to be positive autocorrelations a high  number of lags out thus differencing more than once could be needed)
 
-After analyzing the ACF and PACF plots I notice that there is slow decay in the ACF Plot. There is also a PACF cut off at lag one which leds me to conclude that this is a AR process order 1. 
+The series needs differencing as the Mankendal test above showed a stochastic trend. After running the n_diff function there is only one differencing needed. The ACF plot determines q the number of moving average terms and since it was idenfited as AR determined order 0 for q. For  ARMA there is no systematic process for identification. 
 
-The series needs differencing as the Mankendal test above showed a stocastic trend. after running the n_diff funciton think there is only one differncing needed. the ACF plot determines q 
-
-p=1
+p=2
 d=1
 q=0
-
-```{r}
-deseasonal_natural<- seasadj(decompose_natural_price)
-n_diff <- ndiffs(deseasonal_natural)
-cat("Number of differencing needed:", n_diff)
-
-
-```
 
 ### Q5
 
@@ -127,9 +142,9 @@ Use $Arima()$ from package "forecast" to fit an ARIMA model to your series consi
 
 ```{r}
 
-SARIMA_manual <- Arima(ts_first[,2],order=c(1,1,0), include.mean = TRUE,include.drift=TRUE)
-print(SARIMA_manual)
-cat("Coefficients", var.coef) 
+ARIMA_manual <- Arima(deseasonal_natural,order=c(2,1,0), include.mean = TRUE,include.drift=TRUE)
+print(ARIMA_manual)
+
 
 ```
 
@@ -137,14 +152,37 @@ cat("Coefficients", var.coef)
 
 Now plot the residuals of the ARIMA fit from Q5 along with residuals ACF and PACF on the same window. You may use the $checkresiduals()$ function to automatically generate the three plots. Do the residual series look like a white noise series? Why?
 
+The residuals do seem to be random, there is fairly even variation from negative to positive residuals, and no apparent trends. The residuals seem to be evenly spaced leading me to conclude that the residuals do look like a white noise series. The residuals in the ACF appear to have some dependency as several of the residuals are above the blue line indicating some of the residuals have dependency on each other. There is a seasonal correlation with this dependency as the error term likely has some seasonal variation that is not taken into account when the series was deseasoned.
+
+```{r}
+checkresiduals(ARIMA_manual)
+```
+
+
 ## Modeling the original series (with seasonality)
 
 ### Q7
 
 Repeat Q4-Q6 for the original series (the complete series that has the seasonal component). Note that when you model the seasonal series, you need to specify the seasonal part of the ARIMA model as well, i.e., $P$, $D$ and $Q$.
 
+
+There are multiple spikes in the seasonal lags of the ACF plot.There appears to be one seasonal spike around the seasonal lag of the PACF. Conclude that this is an SAR Process.
+
+Based on the auto-correlation the number of of explanatory variables that you need to accurately portray the model is 2 thus the order of Q=2. I Concluded there was no SMA process. 
+
+After running the ns_diff function, which is the the seasonal differential function the output returned was 1 
+D=1
+
+(0,1,2)
 ```{r}
 
+niff3<- nsdiffs(ts_first)
+
+SARIMA_manual <- Arima(ts_first,order=c(2,1,1),seasonal=c(0,1,2),include.drift=FALSE)
+print(SARIMA_manual)
+
+
+checkresiduals(SARIMA_manual)
 ```
 
 
@@ -152,9 +190,9 @@ Repeat Q4-Q6 for the original series (the complete series that has the seasonal 
 
 Compare the residual series for Q7 and Q6. Can you tell which ARIMA model is better representing the Natural Gas Series? Is that a fair comparison? Explain your response.
 
-```{r}
+The AIC is the maximum likelihood for parametric model and ARIMA model is a parametric model and the thus the lower the AIC the better fit. The ARIMA AIC is higher in Q6 than Q7. This makes a great deal of sense as Q7 interprets the seasonal component and the model has a clear seasonal component
 
-```
+Less residuals fell outside the ACF significant region for Q7 which makes sense as it appeared like the residuals in Q6 (the ARIMA that did not include a seasonal component showed some seasonal variability)
 
 
 ## Checking your model with the auto.arima()
@@ -165,8 +203,12 @@ Compare the residual series for Q7 and Q6. Can you tell which ARIMA model is bet
 
 Use the $auto.arima()$ command on the **deseasonalized series** to let R choose the model parameter for you. What's the order of the best ARIMA model? Does it match what you specified in Q4?
 
+The ARIMA order is close to the one I selected the order found by R was 3,1,0 and I had selected 2,1,0. I was under the impression that order was typically less than or equal to 2, while lag 3 is nearly significant I had interperated that it was not significant.
+
 ```{r}
 
+desasonal <- auto.arima(deseasonal_natural)
+print(desasonal)
 ```
 
 
@@ -174,7 +216,14 @@ Use the $auto.arima()$ command on the **deseasonalized series** to let R choose 
 
 Use the $auto.arima()$ command on the **original series** to let R choose the model parameters for you. Does it match what you specified in Q7?
 
+The seasonal component was (0,1,1) while I had selected (0,1,2).  The difference from the model I had selected and the auto.arima is the P term. I had concluded that this was an SAR process from the multiple spikes in the seasonal lags of the ACF plot. I had selected order 2 becuase of the mltiple spikes in the ACF plot, and the one cut of spike in the PACF plot.I know see why the order is 1. 
+
+There appears to be one seasonal spike around the seasonal lag of the PACF, which led me to Conclude that this is an SAR Process. I did not see any indication that this was an SMA process which is why I identified P=0, and this was confirmed running auto.arima
+
 ```{r}
+
+orgional<- auto.arima(ts_first)
+print(orgional)
 
 ```
 
