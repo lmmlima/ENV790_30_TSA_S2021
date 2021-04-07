@@ -1,0 +1,246 @@
+---
+title: "ENV 790.30 - Time Series Analysis for Energy Data | Spring 2021"
+subtitle: "Assignment 7 - Due date 04/07/21"
+author: "Marie McNamara" 
+output: pdf_document
+geometry: margin=2.54cm
+header-includes:
+  - \usepackage{enumerate}
+  - \usepackage{enumitem}
+---
+
+## Directions
+
+You should open the .rmd file corresponding to this assignment on RStudio. The file is available on our class repository on Github. And to do so you will need to fork our repository and link it to your RStudio.
+
+Once you have the project open the first thing you will do is change "Student Name" on line 3 with your name. Then you will start working through the assignment by **creating code and output** that answer each question. Be sure to use this assignment document. Your report should contain the answer to each question and any plots/tables you obtained (when applicable).
+
+When you have completed the assignment, **Knit** the text and code into a single PDF file. Rename the pdf file such that it includes your first and last name (e.g., "LuanaLima_TSA_A07_Sp21.Rmd"). Submit this pdf using Sakai.
+
+## Set up
+
+Some packages needed for this assignment: `forecast`,`tseries`,`smooth`. Do not forget to load them before running your script, since they are NOT default packages.
+
+```{r}
+#Load/install required package here
+library(lubridate)
+library(ggplot2)
+library(forecast)  
+#library(Kendall)
+library(tseries)
+#library(outliers)
+library(tidyverse)
+library(smooth)
+```
+
+## Importing and processing the data set
+
+Consider the data from the file "inflowtimeseries.txt". The data corresponds to the monthly inflow in $m^{3}/s$ for some hydro power plants in Brazil. You will only use the last column of the data set which represents one hydro plant in the Amazon river basin. The data span the period from January 1931 to August 2011 and is provided by the Brazilian ISO.
+
+For all parts of the assignment prepare the data set such that the model consider only the data from January 2000 up to December 2009. Leave the year 2010 of data (January 2010 to December 2010) for the out-of-sample analysis. Do **NOT** use data fro 2010 and 2011 for model fitting. You will only use it to compute forecast accuracy of your model.
+
+## Part I: Preparing the data sets
+
+### Q1
+
+Read the file into a data frame. Prepare your time series data vector such that observations start in January 2000 and end in December 2009. Make you sure you specify the **start=** and **frequency=** arguments. Plot the time series over time, ACF and PACF.
+
+```{r}
+data=read.table("../Data/inflowtimeseries.txt", header=FALSE, skip=0)
+inflowdata=data[,c(1:2,17)]
+colnames(inflowdata) <-c("Month", "Year", "MonthlyInflow")
+
+sample_data<-inflowdata[which(inflowdata$Year>= 2000 & inflowdata$Year <= 2009),]
+
+full_data <- inflowdata[which(inflowdata$Year>=2000 & inflowdata$Year <=2010),]
+
+sample_ts=ts(sample_data$MonthlyInflow,frequency =12, start=c(2000,1))
+
+full_ts=ts(full_data$MonthlyInflow,frequency =12, start=c(2000,1))
+```
+
+### Q2
+
+Using the $decompose()$ or $stl()$ and the $seasadj()$ functions create a series without the seasonal component, i.e., a deseasonalized inflow series. Plot the deseasonalized series and original series together using ggplot, make sure your plot includes a legend. Plot ACF and PACF for the deaseasonalized series. Compare with the plots obtained in Q1.
+
+```{r}
+decomp<-decompose(sample_ts)
+plot(decomp)
+sample_deseason=seasadj(decompose(sample_ts))
+
+
+plot(sample_ts, ylim=c(0, 60000), type="l", xlab="Year", ylab="Monthly inflow (m^3/s)")
+lines(sample_deseason, col="blue")
+legend(2000, 60000, legend=c("origional data", "deseasonalized data"),col=c("black","blue"),lty = 1:1, cex=0.8) 
+```
+
+## Part II: Forecasting with ARIMA models and its variations
+
+### Q3
+
+Fit a non-seasonal ARIMA$(p,d,q)$ model usign the auto.arima() function to the non-seasonal data. Forecast 12 months ahead of time using the $forecast()$ function. Plot your forecasting results and further include on the plot the last year of non-seasonal data to compare with forecasted values (similar to the plot on the lesson file for M10).
+
+```{r}
+
+fit_sample_deseason=auto.arima(sample_deseason, max.D = 0, max.P = 0, max.Q = 0)
+
+ARIMA=forecast(fit_sample_deseason, h=12)
+
+full_deseason=seasadj(decompose(full_ts))
+
+plot(ARIMA)
+lines(full_deseason, col="red")
+legend(2000, 42000, legend=c("12-month forcast nonseasonal 2000-2009", "origional data 2000-2010"),col=c("blue","red"),lty = 1:1, cex=0.8) 
+
+ARIMA_for <- forecast(ARIMA)
+plot(ARIMA)
+```
+
+### Q4
+
+Put the seasonality back on your forecasted values and compare with the original seasonal data values. $Hint:$ One way to do it is by summing the last year of the seasonal component from your decompose object to the forecasted series. 
+
+
+
+```{r}
+#Put the seasonality back on your forecasted values and compare with the original seasonal data values.
+
+SNAIVE_seas <- snaive(sample_ts)
+
+s1 <- snaive(decomp$seasonal)
+new=ARIMA$mean + s1$mean
+
+plot(ARIMA)
+lines(new, col="red")
+legend(2000, 42000, legend=c("12-monthnonseasonal Forcast", "Seasonal data 2010-2011"),col=c("blue","red"),lty = 1:1, cex=0.8)
+
+Q4<- forecast(new,h=12)
+
+```
+
+### Q5
+
+Repeat Q3 for the original data, but now fit a seasonal ARIMA$(p,d,q)x(P,D,Q)_ {12}$ also using the auto.arima().
+
+```{r}
+
+AutoQ5 <- auto.arima(sample_ts)
+checkresiduals(AutoQ5)
+
+Q5<- forecast(AutoQ5,h=12)
+plot(Q5)
+```
+```
+
+### Q6
+
+Compare the plots from Q4 and Q5 using the autoplot() function.
+
+```{r}
+
+autoplot(sample_ts) +
+    autolayer(Q4, PI=FALSE, series="ARIMA") +
+    autolayer(Q5, PI=FALSE, series="SARIMA")
+    xlab("Month") + ylab("Electricity Retail Price ($/kWh)") +
+    guides(colour=guide_legend(title="Forecast"))
+
+```
+
+## Part III: Forecasting with Other Models
+
+### Q7
+
+Fit an exponential smooth model to the original time series using the function $es()$  from package `smooth`. Note that this function automatically do the forecast. Do not forget to set the arguments: silent=FALSE and holdout=FALSE, so that the plot is produced and the forecast is for the year of 2010.
+
+```{r}
+
+SSES_seas <- es(sample_ts,model="ZZZ",h=n_for,holdout=FALSE,silent=FALSE)
+plot(SSES_seas)
+checkresiduals(SSES_seas)
+
+Q7 <- forecast(SSES_seas,h=12)
+
+```
+
+### Q8
+
+Fit a state space model to the original time series using the function $StructTS()$ from package `stats`. Which one of the tree model we learned should you try: "local", "trend", or "BSM". Why? Play with argument `fixed` a bit to try to understand how the different variances can affect the model. If you can't seem to find a variance that leads to a good fit here is a hint: try $fixed=c(0.1, 0.001, NA, NA)$. Since $StructTS()$ fits a state space model to the data, you need to use $forecast()$ to generate the forecasts. Like you do for the ARIMA fit. 
+
+BMS will fit a basic structural model.
+Level- will find local variations and fit accoudingly 
+Trend- R fits a local linear trend model- series did not appear to be trending so did not select trend 
+
+I think BMS is the best, and from the  residuals the fixed model9which uses BSM) seems to have the most evenly distributed risduals. The residual distribution is one indication of accuracy. However, my one concern is that resduals are almot all above 0 from 2004-2010 that makes me hesitant about this model
+
+```{r}
+SS_seas <- StructTS(sample_ts,
+                    type="BSM",fixed=c(0.1,.001,NA,NA)) 
+checkresiduals(SS_seas)
+
+Q8 <- forecast(SS_seas,h=12)
+plot(SS_for)
+
+#Accurracy 
+SS_seas_scores <- accuracy(SS_for$mean,last_obs)
+plot(SS_seas_scores)
+
+#try trend 
+SS_seas_trend<- StructTS(sample_ts,type="trend")
+checkresiduals(SS_seas_trend)
+
+
+#try level
+SS_seas_level<- StructTS(sample_ts,type="level")
+checkresiduals(SS_seas_level) 
+
+
+```
+
+## Part IV: Checking Forecast Accuracy
+
+### Q9
+
+Make one plot with the complete original seasonal historical data (Jan 2000 to Dec 2010). Now add the forecasts from each of the developed models in parts Q4, Q5, Q7 and Q8. You can do it using the autoplot() combined with autolayer(). If everything is correct in terms of time line, the forecasted lines should appear only in the final year. If you decide to use ggplot() you will need to create a data frame with all the series will need to plot. Remember to use a different color for each model and add a legend in the end to tell which forecast lines corresponds to each model.
+
+
+```{r}
+
+autoplot(full_ts) +
+    autolayer(Q4, PI=FALSE, series="ARIMA") +
+    autolayer(Q5, PI=FALSE, series="SARIMA") +
+    autolayer(Q7, PI=FALSE, series="SSES") +
+    autolayer(Q8, PI=FALSE, series="State space model") +
+    xlab("Month") + ylab("Electricity Retail Price ($/kWh)") +
+    guides(colour=guide_legend(title="Forecast"))
+
+```
+
+### Q10
+
+From the plot in Q9 which model or model(s) are leading to the better forecasts? Explain your answer. Hint: Think about which models are doing a better job forecasting the high and low inflow months for example.
+
+The model that best matches the highest and lowest inflow values is the state space model (which used the BSM). The SARIMA model is the next closest but it over estimates the highest value as does the SSES model.
+
+### Q11
+
+Now compute the following forecast metrics we learned in class: RMSE and MAPE,  for all the models you plotted in part Q9. You can do this by hand since your have forecasted and observed values for the year of 2010. Or you can use R function $accuracy()$ from package "forecast" to do it. Build and a table with the results and highlight the model with the lowest MAPE. Does the lowest MAPE corresponds match your answer for part Q10?
+
+the best model was the state space BSM - yes it corresponds to answer in Q10
+
+```{r}
+ARIMA_scores<- accuracy(ARIMA$mean,last_obs) 
+SARIMA_scores<- accuracy(Q5$mean,last_obs) 
+SSES_scores <- accuracy(Q7$mean,last_obs)
+SS_scores <- accuracy(Q8$mean,last_obs) 
+
+
+#create data frame
+seas_scores <- as.data.frame(rbind(ARIMA_scores, SARIMA_scores,SSES_scores,SS_scores))
+row.names(seas_scores) <- c("ARIMA","SARIMA","SSES","BSM")
+
+#choose model with lowest MAPE
+best_model_index <- which.min(seas_scores[,"MAPE"])
+cat("The best model by MAPE is:", row.names(seas_scores[best_model_index,]))                       
+                            
+```
+

@@ -1,0 +1,200 @@
+---
+title: "Lab 10: State Space Models"
+author: "Luana Lima"
+date: "03/31/2021"
+output: pdf_document
+always_allow_html: true
+editor_options: 
+  chunk_output_type: inline
+---
+
+## Objectives
+
+1.  Go over the file "/Assignments/TSA_A6_Sp21_KEY.Rmd"
+2.  Answer questions on M10
+3.  Answer questions on A7 (if any)
+4.  Exercise: Redo Lesson 10 with another data set.
+
+## Setting R code chunk options
+
+First R code chunk is used for setting the options for all R code chunks. The choice echo=TRUE means both code and output will appear on report, include = FALSE neither code nor output is printed.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,tidy.opts=list(width.cutoff=80), tidy=FALSE) 
+```
+
+## Loading packages and initializing
+
+Second R code chunk is for loading packages. By setting message = FALSE, the code will appear but not the output.
+
+```{r package, message=FALSE}
+library(lubridate)
+library(ggplot2)
+library(forecast)  
+#library(Kendall)
+library(tseries)
+#library(outliers)
+library(tidyverse)
+library(smooth)
+
+#New package for M9 to assist with tables
+#install.packages("kableExtra")
+library(kableExtra)
+
+```
+
+## Part 4: Redo Lesson 10 prompt with another data set.
+
+### Preparing data
+
+For this lab we will work with data from the file "Net_generation_United_States_all_sectors_monthly.csv". The data corresponds to the monthly net generation from January 2001 to December 2020 by source and is provided by the US Energy Information and Administration. You may download [here][[https://www.eia.gov/electricity/data/browser/\#/topic/7?agg=2,0,1&geo=g&freq=M%2013:41:41%20GMT-0500%20(EST)](https://www.eia.gov/electricity/data/browser/#/topic/7?agg=2,0,1&geo=g&freq=M%2013:41:41%20GMT-0500%20(EST)){.uri}].
+We will work with the **all.fuels** column.
+
+```{r}
+net_generation <- read.csv("./Data/Net_generation_United_States_all_sectors_monthly.csv", skip=4, header=TRUE)
+
+#Create a data frame with natural gad only
+all_net_generation <- net_generation %>% 
+  rename(all_net_gen = all.fuels..utility.scale..thousand.megawatthours) %>% 
+  select(Month, all_net_gen) %>% 
+  mutate(Month = my(Month)) %>% 
+  arrange(Month)
+
+#Create time series object
+first_m <- month(all_net_generation$Month[1])
+first_y <- year(all_net_generation$Month[1])
+ts_all_fuel <- ts(all_net_generation[,"all_net_gen"],
+            start=c(first_y,first_m),
+            frequency = 12)
+
+#Plot series
+autoplot(ts_all_fuel) +
+  ylab("All Fuels Net Generation 1000 MWh")
+
+#ACF and PACF plots
+par(mfrow=c(1,2))
+ACF_Plot <- Acf(ts_all_fuel, lag = 40, plot = TRUE,main="")
+PACF_Plot <- Pacf(ts_all_fuel, lag = 40, plot = TRUE,main="")
+par(mfrow=c(1,1))
+
+```
+
+
+### Decomposing the time series
+
+The plots from the previous section show the data has a seasonal component. Since we are working with non-seasonal ARIMA, we need to decompose the series and eliminate the seasonality.
+
+```{r}
+#Using R decompose function
+decompose_all_fuel <- decompose(ts_all_fuel,"additive")
+plot(decompose_all_fuel)
+
+#The ACF plot show a slow decay which is a sign of non-stationarity.
+#Creating non-seasonal residential price time series because some models can't handle seasonality
+deseasonal_all_fuel <- seasadj(decompose_all_fuel)  
+```
+
+### Fitting Models to the original (seasonal) series
+
+Let's work with out-of-sample forecasting, i.e., forecast observations that are not in the sample used to fit the models. There is a simple way to do that by setting argument `holdout=TRUE`. But some functions to do not offer the holdout argument. Therefore let's create a new series that will be a subset of our original one except that the last observation will be December 2019. And then we will store the remaining observations in 2020 to check the accuracy of our model forecasting 12 steps ahead of time.
+
+```{r}
+
+```
+
+
+We will use this new series to fit/forecast all the models. Do not forget to set holdout=FALSE to make sure we are forecasting the same time period. Let's start by looking at residual plots and AIC to check how the models represent the historical generation.
+
+#### Model 1: Arithmetic mean
+```{r}
+
+```
+
+
+#### Model 2: Seasonal naive
+```{r}
+
+```
+
+
+#### Model 3: SARIMA
+```{r}
+
+```
+
+### Fitting State Space Models to the original (seasonal) series
+
+#### Model 4: SS Exponential smoothing
+
+Let's start by trying an exponential smoothing under the state space model. In teh videos we went over the state equation for level only. But the ES can be used to represent trend and seasonal as well, these are know as ETS (Exponential Trend and Seasonal) models. We will talk in more details on M11.
+
+```{r}
+
+```
+
+
+#### Model 5: SS with StructTS()
+
+Now let's try to fit one of the three SS models we learned: local level, local linear trend and the basic structure model (BSM). Since we have seasonality we need to go with the BSM. We will use the `StructTS()` function from package `forecast`.
+The function takes a few arguments, here are the important ones:
+
+**x**  time series object
+**type** type of the model. If `type ='level'` R will fit a local level model. If `type ='trend'` R will fit a local linear trend model and if `type ='BSM'` R will fit a basic structural model. If argument is omitted, a BSM is used for a time series with frequency > 1, and a local trend model otherwise.
+**fixed** optional numeric vector with values for the components variances in the following order $fixed=c(\sigma^2_\eta,\sigma^2_\xi,\sigma^2_\omega,\sigma^2_\epsilon)$. The first variance is with respect to level, second is trend, third is seasonal and fourth is observation. If supplied, only NA entries in fixed will be varied. This argument is useful for setting variances to zero.
+
+
+```{r}
+
+```
+### Model Performance for forecasting 12 steps ahead
+
+We are done with backward-looking assessment. Let's move on to the forward-looking assessment for all models.
+
+#### Checking accuracy of the five models
+
+We will change this part a bit compared to M9 because I want the accuracy just for the forecasting window of 12 months. Just to simplify the code I will create a vector with the last 12 observations. At this point make sure that for all instances that when you forecast you specify `holdout=TRUE` because we want to access the accuracy of the forecast out-of-sample.
+
+```{r}
+#Model 1: Arithmetic mean
+
+#Model 2: Seasonal naive 
+
+# Model 3:  SARIMA 
+
+# Model 4:  SSES
+
+# Model 5:  ? 
+
+```
+
+#### Compare performance metrics
+
+Now we will create a data frame that combines performance metrics for all the three models. You can choose one metric to help you choose among models. For example let's say we want the model with lowest RMSE.
+
+````{r}
+
+
+```
+
+Create a table to compare model accuracy and help visualize the results here is a suggestion on how to include a table on your Rmd report. You can use the `kable_styling(latex_options="striped")` to highlight the model that leads to minimum RMSE.
+
+```{r}
+#kbl()
+```
+
+### Plotting everything together
+
+Here we will use autoplot() and autolayer() from package `ggplot2` to draw a particular plot for time series. The function autolayer() takes a few main arguments.
+
+**x** Forecast object produced by forecast() function. If forecasts were generated with another function you may need to point to the object either mean or forecast to get the values .
+**include** number of values from time series to include in plot. Default is all values.
+**PI** Logical flag indicating whether to plot prediction intervals.
+**series** Matches an unidentified forecast layer with a coloured object on the plot.
+
+```{r}
+
+#autoplot() +
+#  autolayer() +
+  
+```
+

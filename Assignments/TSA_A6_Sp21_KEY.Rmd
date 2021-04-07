@@ -1,0 +1,268 @@
+---
+title: "ENV 790.30 - Time Series Analysis for Energy Data | Spring 2021"
+subtitle: "Assignment 6 - Due date 03/26/21"
+author: "KEY"
+output: pdf_document
+geometry: margin=2.54cm
+header-includes:
+  - \usepackage{enumerate}
+  - \usepackage{enumitem}
+editor_options: 
+  chunk_output_type: console
+---
+
+## Directions
+
+You should open the .rmd file corresponding to this assignment on RStudio. The file is available on our class repository on Github. And to do so you will need to fork our repository and link it to your RStudio.
+
+Once you have the project open the first thing you will do is change "Student Name" on line 3 with your name. Then you will start working through the assignment by **creating code and output** that answer each question. Be sure to use this assignment document. Your report should contain the answer to each question and any plots/tables you obtained (when applicable).
+
+When you have completed the assignment, **Knit** the text and code into a single PDF file. Rename the pdf file such that it includes your first and last name (e.g., "LuanaLima_TSA_A06_Sp21.Rmd"). Submit this pdf using Sakai.
+
+## Set up
+
+Some packages needed for this assignment: `forecast`,`tseries`. Do not forget to load them before running your script, since they are NOT default packages. 
+
+```{r}
+#Load/install required package here
+library(forecast)
+library(tseries)
+library(tidyverse)
+library(lubridate)
+library(Kendall)
+```
+
+## Importing and processing the data set
+
+Consider the data from the file "Net_generation_United_States_all_sectors_monthly.csv". The data corresponds to the monthly net generation from January 2001 to December 2020 by source and is provided by the US Energy Information and Administration. **You will work with the natural gas column only**.
+
+
+### Q1
+
+Import the csv file and create a time series object for natural gas. Make you sure you specify the **start=** and **frequency=** arguments. Plot the time series over time, ACF and PACF.
+
+```{r}
+net_generation <- read.csv("./Data/Net_generation_United_States_all_sectors_monthly.csv", skip=4, header=TRUE)
+
+#Create a data frame with natural gad only
+ng_net_generation <- net_generation %>% 
+  rename(ng_net_gen = natural.gas.thousand.megawatthours) %>% 
+  select(Month, ng_net_gen) %>% 
+  mutate(Month = my(Month)) %>% 
+  arrange(Month)
+
+#Create time series object
+first_m <- month(ng_net_generation$Month[1])
+first_y <- year(ng_net_generation$Month[1])
+ts_ng <- ts(ng_net_generation[,"ng_net_gen"],
+            start=c(first_y,first_m),
+            frequency = 12)
+
+#Plot series
+autoplot(ts_ng) +
+  ylab("Natural Gas Net Generation 1000 MWh")
+
+#ACF and PACF plots
+par(mfrow=c(1,2))
+ACF_Plot <- Acf(ts_ng, lag = 40, plot = TRUE,main="")
+PACF_Plot <- Pacf(ts_ng, lag = 40, plot = TRUE,main="")
+par(mfrow=c(1,1))
+
+```
+
+### Q2
+
+Using the $decompose()$ or $stl()$ and the $seasadj()$ functions create a series without the seasonal component, i.e., a deseasonalized natural gas series. Plot the deseasonalized series over time and corresponding ACF and PACF. Compare with the plots obtained in Q1.
+
+```{r}
+#Using R decompose function
+decompose_ts_ng <- decompose(ts_ng,"additive")
+plot(decompose_ts_ng)
+
+#Creating non-seasonal time series 
+deseasonal_ts_ng <- seasadj(decompose_ts_ng)  
+
+#Plot series
+autoplot(deseasonal_ts_ng) +
+  ylab("Non-seas Natural Gas Net Generation 1000 MWh")
+
+#ACF and PACF plots
+par(mfrow=c(1,2))
+ACF_Plot <- Acf(deseasonal_ts_ng, lag = 40, plot = TRUE,main="")
+PACF_Plot <- Pacf(deseasonal_ts_ng, lag = 40, plot = TRUE,main="")
+par(mfrow=c(1,1))
+```
+
+## Modeling the seasonally adjusted or deseasonalized series
+
+### Q3
+
+Run the ADF test and Mann Kendall test on the deseasonalized data from Q2. Report and explain the results.
+
+```{r}
+#Start by running ADF to check for unit root. Remember unit root is related to stochastic trend
+# H0: data has unit root
+# H1: data is stationary
+adf.test(deseasonal_ts_ng)
+
+# Answer: pvalue < 0.05 so we reject H0, meaning the series does not have a stochastic trend, but we still need to check for a deterministic trend. The alternative hypothesis only mean the data is stationary for a stochastic trend.
+
+#Run Mann Kendall
+# H0: data is stationary
+# H1: data follow a trend
+MannKendall(deseasonal_ts_ng)
+
+#Answer: pvalue less < 0.05, once again we reject null hypothesis. Data has a derterministic trend.
+
+```
+
+### Q4
+
+Using the plots from Q2 and test results from Q3 identify the ARIMA model parameters $p,d$ and $q$. Note that in this case because you removed the seasonal component prior to identifying the model you don't need to worry about seasonal component. Clearly state your criteria and any additional function in R you might use. DO NOT use the $auto.arima()$ function. You will be evaluated on ability to read the plots and interpret the test results.
+
+```{r}
+#To identify the ARIMA model order let's look at ACF/PACF plots again from Q2. It seems we are dealing with a AR model of order 1 and since we have a trend we need differencing. Therefore one acceptable answer would be:
+#ARIMA(1,1,0)
+
+#But Note that there is a slow decay so we might need diferencing. 
+#Use teh ndiffs() to find out.
+
+ndiffs(deseasonal_ts_ng)
+#Since differencing is needed you need to look at ACF/PACF of the differenced series to find order of the model
+
+diff_deseasonal_ts_ng <- diff(deseasonal_ts_ng, differences = 1)
+par(mfrow=c(1,2))
+ACF_Plot <- Acf(diff_deseasonal_ts_ng, lag = 40, plot = TRUE,main="")
+PACF_Plot <- Pacf(diff_deseasonal_ts_ng, lag = 40, plot = TRUE,main="")
+par(mfrow=c(1,1))
+
+# Look at how the plot changed! Now we don't have slow decay anymore. And we actually have a negative ACF at lag 1. We might be dealing with a moving average model now.
+
+#Acceptable answers would be: ARIMA(1,1,1) or ARIMA(0,1,1)
+
+#Because we can't see cutoffs on either plot let's stick with p=d=q=1
+
+```
+
+### Q5
+
+Use $Arima()$ from package "forecast" to fit an ARIMA model to your series considering the order estimated in Q4. Should you allow for constants in the model, i.e., $include.mean = TRUE$ or $include.drift=TRUE$. **Print the coefficients** in your report. Hint: use the $cat()$ function to print.
+
+```{r}
+#Fitting ARIMA(1,1,1)
+ARIMA_fit <- Arima(deseasonal_ts_ng,order=c(1,1,1),include.drift = TRUE)
+#Here I use include.drift=TRUE because d=1. When in doubt just use include.mean=TRUE
+print(ARIMA_fit)
+
+
+#Print coefficients
+cat("The coefficients are:",ARIMA_fit$coef) 
+
+```
+
+### Q6
+
+Now plot the residuals of the ARIMA fit from Q5 along with residuals ACF and PACF on the same window. You may use the $checkresiduals()$ function to automatically generate the three plots. Do the residual series look like a white noise series? Why?
+
+```{r}
+checkresiduals(ARIMA_fit)
+
+#Look at the results of the Ljung-Box test
+#Ljung-Box test checks whether any of a group of autocorrelations of a time series are different from zero.
+
+# Answer: p-value < 0.05 so none of the ACF values are statiscally different than zero. So yes, it looks like we have a white-noise series.
+```
+
+
+## Modeling the original series (with seasonality)
+
+### Q7
+
+Repeat Q4-Q6 for the original series (the complete series that has the seasonal component). Note that when you model the seasonal series, you need to specify the seasonal part of the ARIMA model as well, i.e., $P$, $D$ and $Q$.
+
+```{r}
+# To identify the SARIMA model order let's look at ACF/PACF plots again from Q1. It seems we are dealing with a AR model of order 2 and since we have a trend we need differencing. 
+# As for the seasonal component we see multiple spikes on ACF and one single spike on PACF meaning this is a SAR order of SAR can only be 1. 
+#Therefore one acceptable answer would be:
+#SARIMA(2,1,0)(1,0,0)[12]
+
+#But note that there is a slow decay on ACF so we might need differencing. And we may also need differencing at seasonal lag.
+#Use the ndiffs() and nsdiffs()to find out. Always start with nsdiffs().
+
+nsdiffs(ts_ng)
+## output: 1
+diff_ts_ng <- diff(diff_ts_ng, differences = 1, lag = 12)
+
+ndiffs(diff_ts_ng)
+## output: 0
+
+# We got d=0 and D=1
+#Need to look at ACF/PACF of the differenced series to find order of the model
+
+par(mfrow=c(1,2))
+ACF_Plot <- Acf(diff_ts_ng, lag = 40, plot = TRUE,main="")
+PACF_Plot <- Pacf(diff_ts_ng, lag = 40, plot = TRUE,main="")
+par(mfrow=c(1,1))
+
+# Look at how the plots changed again! 
+# the seasonal component inverted. Now multiple spikes on PACF and only 1 on ACF, meaning we have a SMA model.
+# And for the non-seasonal lags we see negative values at lag1, meaning we could have a MA model. But there are no cut-offs on either plot so we could again be dealing with ARMA. 
+
+#Acceptable answers would be: ARIMA(1,0,1)(0,1,1)[12] or ARIMA(0,0,1)(0,1,1)[12] or ARIMA(1,0,0)(0,1,1)[12]
+
+#Fitting ARIMA(1,0,1)(0,1,1)
+SARIMA_fit <- Arima(deseasonal_ts_ng,order=c(1,0,1),seasonal = c(0,1,1),include.drift = TRUE)
+print(SARIMA_fit)
+
+
+#Print coefficients
+cat("The coefficients are:",SARIMA_fit$coef) 
+
+checkresiduals(SARIMA_fit)
+
+```
+
+
+### Q8
+
+Compare the residual series for Q7 and Q6. Can you tell which ARIMA model is better representing the Natural Gas Series? Is that a fair comparison? Explain your response.
+
+```{r}
+# Answer: From the residuals plots it's hard to tell which one is better representing the series. But the point here is this is not a fair comparison because on the forst ARIMA we are considering a constant seasonal component whereas on the SARIMA we are actually modeling the seasonal component. So the SARIMA is more powerful and will lead to better forecast.
+# Another way to answer is by looking at AIC
+```
+
+
+## Checking your model with the auto.arima()
+
+**Please** do not change your answers for Q4 and Q7 after you ran the $auto.arima()$. It is **ok** if you didn't get all orders correctly. You will not loose points for not having the correct orders. The intention of the assignment is to walk you to the process and help you figure out what you did wrong (if you did anything wrong!).
+
+### Q9
+
+Use the $auto.arima()$ command on the **deseasonalized series** to let R choose the model parameter for you. What's the order of the best ARIMA model? Does it match what you specified in Q4?
+
+```{r}
+auto_ARIMA_fit <- auto.arima(deseasonal_ts_ng)
+print(auto_ARIMA_fit)
+
+#Note that this is exactly the order we guessed on Q4 and it also has the drift
+
+```
+
+
+### Q10
+
+Use the $auto.arima()$ command on the **original series** to let R choose the model parameters for you. Does it match what you specified in Q7?
+
+```{r}
+auto_SARIMA_fit <- auto.arima(ts_ng)
+print(auto_SARIMA_fit)
+
+#Note that we nailed the seasonal component, but we missed the non-seas component. 
+#The best fit for the non-seas component is AR(1). 
+
+#Compare AICc and you will see we got pretty close!
+cat("Manual SARIMA:", SARIMA_fit$aicc, "Auto SARIMA:", auto_SARIMA_fit$aicc)
+
+```
+
