@@ -1,0 +1,20 @@
+---
+title: "Lab 11: Advanced Forecasting Methods"
+author: "Luana Lima"
+date: "04/07/2021"
+output: pdf_document
+always_allow_html: true
+editor_options: 
+  chunk_output_type: console
+  markdown: 
+    wrap: sentence
+---
+
+## Objectives
+
+1.  Answer questions on A7 - comment on knitting
+2.  Answer questions on M11 - higher frequency data
+3.  Talk about final project and forecasting competition options
+      - sample from last year
+4.  Bayesian exercise
+5.  Work on A7
