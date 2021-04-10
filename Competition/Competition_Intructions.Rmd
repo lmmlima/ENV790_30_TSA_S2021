@@ -1,0 +1,76 @@
+---
+title: "TSA: Forecasting Competition Instructions"
+author: "Luana Lima"
+date: "04/09/2021"
+output: pdf_document
+always_allow_html: true
+editor_options: 
+  chunk_output_type: console
+  markdown: 
+    wrap: sentence
+---
+
+## CREATE A REPOSITORY IN YOUR GITHUB ACCOUNT (optional)
+
+1. Go to your user account on GitHub an navigate to the repositories tab. 
+
+3. In the upper right corner, click the green "New" button. 
+
+4. Name your repository with recommended naming conventions (suggestion: *Lastname1Lastname2_ENV790_TSA_Competition*). Write a short description of the purpose of the repository. Check the box to initialize the repository with a README. Add a .gitignore for R and add a GNU General Public License v3.0.
+
+5. Invite other group members as collaborators to the repository.
+
+## LINK YOUR REPO TO YOUR LOCAL DRIVE WITH RSTUDIO (optional)
+ 
+1. Click the "Clone or download" button for your repository and then the "copy" icon. Make sure the box header lists "Clone with HTTPS" rather than "Clone with SSH." If not, click the "Use HTTPS" button and then copy the link.
+
+2. Launch RStudio and select "New Project" from the File menu. Choose "Version Control" and "Git."
+
+3. Paste the repository URL and give your repository a name and a file path.
+
+## IMPORT THE DATASET
+
+In the folder `/Competition/Data` you will find three datasets one with hourly demand, one with hourly temperature and another with relative humidity from January 2005 to December 2010.
+Your goal is to forecast **daily** demand for the year of 2011 based on this historical data. You may or may not use the temperature and relative humidity on your models. The temperature and humidity measurement are from stations close to the household meter data you have.
+
+## WRANGLE/PROCESS THE DATASET
+
+You will need to transform hourly data into daily data. See the Rmd file from Lesson 11 for instruction on how to aggregate your dataset using pipes.
+
+## CREATE A TIME SERIES OBJECT
+
+After you process your dataset use the `msts()` function to create a time series object.
+
+## FIT MODELS TO YOUR DATA
+
+Fit models to your dataset considering the period 2005-2009. 
+
+## FORECAST DAILY DEMAND FOR 2010 
+
+Using the models from previous section, forecast daily demand for 2010. Based on the models you develop which one is leading to the best forecast for 2010? 
+
+## FORECAST DAILY DEMAND FOR 2011
+
+Just for the winner model we will **re-run** the model but now using the entire dataset (2005-2010) for model fitting and forecast the year of 2011.
+
+## CREATE AN EXCEL FILE WITH FORECAST MEAN
+
+Look at the excel file in your Output folder name "submission_template.csv". You will need to create your own output file with forecast for 2011. Your file needs to be in the format of the submission template.
+
+## LOAD TEMPLATE IN KAGGLE
+
+I create a kaggle competition for this assignment. You will need to submit your group's solution using this [link.][
+https://www.kaggle.com/t/eb40fdc0ff204feb8661a51ec7832b2b]
+
+## COMPLETE YOUR PROJECT REPORT
+
+For the project report you only need to organize your current Rmd file. Make sure you follow the guidelines.
+
+1. Write in scientific style, not narrative style
+
+2. [Global options for R chunks](https://rmarkdown.rstudio.com/lesson-3.html) should be set so that only relevant output is displayed. Turn on/off messages and warnings when applicable to avoid unnecessary outputs on the pdf.
+
+3. Make sure your final knitted PDF looks professional. Format tables, size figures, chapters, etc.
+
+4. Make sure the PDF file has the file name "Lastname_ENV790_Competition.pdf" and submit it to the dropbox in Sakai. You will only submit your PDF file.
+

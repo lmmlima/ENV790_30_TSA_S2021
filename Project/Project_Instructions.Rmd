@@ -42,7 +42,7 @@ geometry: margin=2.54cm
 
 4. Make sure your final knitted PDF looks professional. Format tables, size figures, chapters, etc.
 
-5. Make sure the PDF file has the file name "Lastname_ENV790_Project.pdf" and submit it to the dropbox in Sakai. You will only usbmit your PDF file.
+5. Make sure the PDF file has the file name "Lastname_ENV790_Project.pdf" and submit it to the dropbox in Sakai. You will only submit your PDF file.
 
 ### Contents of the Report 
 
