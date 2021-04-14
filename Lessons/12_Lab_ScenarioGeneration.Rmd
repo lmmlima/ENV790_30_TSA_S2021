@@ -20,7 +20,7 @@ editor_options:
   Next week: presentations
   Each group will have 6 minutes to present their work. Final project presentations should have info on data, wrangling, analysis, model choice and results. Competition presentations show go over data wrangling, initial analysis, model choice and results. 
   
-  Deliverables: aside from presentation each group need to submit the knitted version of their Rmd file to Sakai under A8. no need to submit Rmd file, just the pdf.
+  Deliverables: aside from presentation each group need to submit the knitted version of their Rmd file to Sakai under A8. no need to submit Rmd file, just the pdf. Due date for project report is April 26.
   
   Navigate Kaggle [website][https://www.kaggle.com/c/tsasp21/overview]. Let me know if you have questions. To upload your results use the template for submission. The file shoudl be a .csv with two dolumns (data and load). The website will automatically calculate the RMSE. Your go is to at least beat the vanilla model results. 
   
