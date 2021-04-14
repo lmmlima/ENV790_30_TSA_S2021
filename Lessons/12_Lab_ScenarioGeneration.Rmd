@@ -1,0 +1,49 @@
+---
+title: "Lab 12: Scenario Generation"
+author: "Luana Lima"
+date: "04/14/2021"
+output: pdf_document
+always_allow_html: true
+editor_options: 
+  chunk_output_type: console
+  markdown: 
+    wrap: sentence
+---
+
+
+## Objectives
+
+### Comments on A8: final project or competition
+
+  Google sheet: 3 groups doing competition and 3 doing final project
+  
+  Next week: presentations
+  Each group will have 6 minutes to present their work. Final project presentations should have info on data, wrangling, analysis, model choice and results. Competition presentations show go over data wrangling, initial analysis, model choice and results. 
+  
+  Deliverables: aside from presentation each group need to submit the knitted version of their Rmd file to Sakai under A8. no need to submit Rmd file, just the pdf.
+  
+  Navigate Kaggle [website][https://www.kaggle.com/c/tsasp21/overview]. Let me know if you have questions. To upload your results use the template for submission. The file shoudl be a .csv with two dolumns (data and load). The website will automatically calculate the RMSE. Your go is to at least beat the vanilla model results. 
+  
+  Rubrics: You will be grades by analysis, presentations and report.
+
+###  Answer questions on A7
+
+  Which one was the best model?
+
+### Answer questions on M12 - scenario generation
+
+1. How do we know that our data has multiple seasonality? For some it is clear based on the kind of data we have for analysis, but for some it is not clearly visible. So, how do we know that there is multiple seasonality involved?
+
+2. What is the best way to forecast an hourly, annual data (i.e., if we have 8760 observations for our dataset)?
+
+3. Can you please provide some more explanation on Cholesky decomposition? I did not quite understand how we do that and how we fit our data and perform a scenario analysis.
+How do we know how many scenarios we need? 
+
+4. Can we say that the confidence intervals that we have for our forecasts are indeed scenarios? 
+
+  If our scenarios are qualitative (example - good, normal, bad), how do we quantify them and perform the analysis?
+  If we want to perform a scenario analysis for extreme weather conditions, how would we do that?
+
+### Breakoutrooms: Work on Project/Competition
+
+### Next week: course evaluations
